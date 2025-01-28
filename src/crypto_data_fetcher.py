@@ -43,5 +43,3 @@ class CryptoDataFetcher:
         except Exception as e:
             logger.error(f"Error fetching historical data for {coin_symbol}: {e}")
             return None
-
-
