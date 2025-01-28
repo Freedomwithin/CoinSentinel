@@ -30,7 +30,7 @@ An advanced cryptocurrency tracking and analysis application built with Python.
 4. Install required packages:
 
    ```bash
-    pip install --upgrade -r requirements.txt
+    pip install -r requirements.txt
 
 ## Usage
 
