@@ -15,8 +15,8 @@ An advanced cryptocurrency tracking and analysis application built with Python.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Freedomwithin/HealingWithMeditation.git
-   cd cryptobot
+   git clone https://github.com/Freedomwithin/CoinSentinel/.git
+   cd CoinSentinel
    
 2. Create and activate a virtual environment:
 
@@ -37,12 +37,8 @@ An advanced cryptocurrency tracking and analysis application built with Python.
 Run the application
 
    ```bash
-python run.py
+python main_app_pyqt.py
    ```
-
-## Project Structure
-
-cryptobot/ ├── run.py # Main entry point ├── requirements.txt # Dependencies list ├── cryptobot/ ├── src/ # Core application logic │ ├── api_handler.py │ ├── portfolio_tracker.py │ ├── sentiment_tracker.py │ ├── price_predictor.py │ └── notification_manager.py └── gui/ # User interface components └── main_app.py
 
 ## Additional Options
 
@@ -50,16 +46,20 @@ You can create an executable `.sh` or `.command` file to simplify running the pr
 
 1. Create an executable file using a text editor:
    ```bash
-   nano run.sh   
+   nano run.sh  
 2. Add the following content to the file:
    ```bash
-   python3 run.py
+   cd CoinSentinel
+   source venv/bin/activate
+   pip install --update pip 
+   pip install -r requirements.txt
+   python main_app_pyqt.py
    ```
  Save and exit the editor (Ctrl+O, Enter, then Ctrl+X in nano).
 
 4. Make the script executable:
    ```bash
-   chmod +x run.sh
+   chmod +x main_app_pyqt.py
    ```
 5. Run the script:
     ```bash
