@@ -1,6 +1,6 @@
 # CoinSentinel
 
-An advanced cryptocurrency tracking and analysis application built with Python.
+CoinSentinel is an advanced cryptocurrency tracking and analysis application that empowers users to make informed investment decisions with AI-driven insights. Built with Python, CryptoPulse provides a real-time market overview, portfolio management tools, and leverages machine learning to deliver accurate 24-hour and 48-hour price predictions. It also incorporates sentiment analysis to gauge market trends and offers custom price alerts and cryptocurrency news aggregation to keep users ahead of the curve. Gain a competitive edge with CoinSentinel's live analytics and predictive capabilities.
 
 ## Features
 
