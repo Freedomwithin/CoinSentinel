@@ -1,4 +1,4 @@
-# cryptobot
+# CoinSentinel
 
 An advanced cryptocurrency tracking and analysis application built with Python.
 
