@@ -1,6 +1,8 @@
 # CoinSentinel
 
-CoinSentinel is an advanced cryptocurrency tracking and analysis application that empowers users to make informed investment decisions with AI-driven insights. Built with Python, CryptoPulse provides a real-time market overview, portfolio management tools, and leverages machine learning to deliver accurate 24-hour and 48-hour price predictions. It also incorporates sentiment analysis to gauge market trends and offers custom price alerts and cryptocurrency news aggregation to keep users ahead of the curve. Gain a competitive edge with CoinSentinel's live analytics and predictive capabilities.
+CoinSentinel is an advanced cryptocurrency tracking and analysis application that empowers users to make informed investment decisions with AI-driven insights. Built with Python, CoinSentinel provides a real-time market overview, portfolio management tools, and leverages machine learning to deliver accurate 24-hour and 48-hour price predictions. It also incorporates sentiment analysis to gauge market trends, offers custom price alerts, and aggregates cryptocurrency news to keep users ahead of the curve.
+
+Gain a competitive edge with CoinSentinel's live analytics and predictive capabilities.
 
 ## Features
 
@@ -16,7 +18,7 @@ CoinSentinel is an advanced cryptocurrency tracking and analysis application tha
 1. Clone the repository:
    ```bash
    git clone https://github.com/Freedomwithin/HealingWithMeditation.git
-   cd cryptobot
+   cd CoinSentinel
    
 2. Create and activate a virtual environment:
 
@@ -42,35 +44,37 @@ python run.py
 
 ## Project Structure
 
-cryptobot/ ├── run.py # Main entry point ├── requirements.txt # Dependencies list ├── cryptobot/ ├── src/ # Core application logic │ ├── api_handler.py │ ├── portfolio_tracker.py │ ├── sentiment_tracker.py │ ├── price_predictor.py │ └── notification_manager.py └── gui/ # User interface components └── main_app.py
+CoinSentinel/
+├── run.py                 # Main entry point
+├── requirements.txt       # Dependencies list
+├── src/                   # Core application logic
+│   ├── api_handler.py
+│   ├── crypto_data_fetcher.py
+│   ├── portfolio_tracker.py
+│   ├── sentiment_tracker.py
+│   ├── price_predictor.py
+│   └── notification_manager.py
+└── gui/                   # User interface components
+    └── main_app_pyqt.py
+
 
 ## Additional Options
 
-You can create an executable `.sh` or `.command` file to simplify running the project:
+You can create an executable script to simplify running the project.
 
-1. Create an executable file using a text editor:
-   ```bash
-   nano run.sh   
-2. Add the following content to the file:
-   ```bash
-   python3 run.py
+1. Windows: You can create a run.bat file with:
+   ```bat
+   @echo off
+   python run.py
+   pause
    ```
- Save and exit the editor (Ctrl+O, Enter, then Ctrl+X in nano).
-
-4. Make the script executable:
-   ```bash
-   chmod +x run.sh
-   ```
-5. Run the script:
-    ```bash
-    ./run.sh
-    ```
 
 For macOS users creating a .command file, follow the same steps but name the file run.command. The execution process remains the same.
 
 ## Dependencies
 
 See `requirements.txt` for a full list of dependencies.
+Note: If using scikit-learn, make sure sklearn is not in your requirements; use scikit-learn instead.
 
 ## Contributing
 
