@@ -1,27 +1,48 @@
-certifi==2026.1.4
-charset-normalizer==3.4.4
+# CoinSentinel AI - Advanced Cryptocurrency Tracker
+# Python 3.11 Compatible Dependencies
+# Generated from verified working environment
+
+# Core GUI Framework
+PyQt5==5.15.11
+PyQt5-sip==12.15.0
+
+# Data Science & Machine Learning
+numpy==2.1.3
+pandas==2.2.3
+scikit-learn==1.8.0
+scipy==1.14.1
+joblib==1.4.2
+
+# Data Visualization
+matplotlib==3.9.3
+pillow==11.0.0
+
+# Technical Analysis
+ta==0.10.2
+
+# API Integration & Data Fetching
+pycoingecko==3.2.0
+requests==2.32.3
+
+# System & Utilities
+plyer==2.1.0
+python-dateutil==2.9.0.post0
+pytz==2024.2
+tzdata==2024.2
+
+# Security & HTTP
+certifi==2024.8.30
+urllib3==2.2.3
+
+# Text Processing
+charset-normalizer==3.4.0
+idna==3.11
+
+# Support Libraries
 contourpy==1.3.0
 cycler==0.12.1
-fonttools==4.60.2
-idna==3.11
-importlib_resources==6.5.2
-joblib==1.5.3
-kiwisolver==1.4.7
-matplotlib==3.9.4
-numpy==2.0.2
-packaging==25.0
-pandas==2.3.3
-pillow==11.3.0
-plyer==2.1.0
-pycoingecko==3.2.0
-pyparsing==3.3.1
-python-dateutil==2.9.0.post0
-pytz==2025.2
-requests==2.32.5
-scikit-learn==1.6.1
-scipy==1.13.1
-six==1.17.0
-threadpoolctl==3.6.0
-tzdata==2025.3
-urllib3==2.6.3
-zipp==3.23.0
+fonttools==4.55.3
+packaging==24.2
+pyparsing==3.2.0
+six==1.16.0
+threadpoolctl==3.5.0
