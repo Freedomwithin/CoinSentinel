@@ -1,0 +1,69 @@
+[33mcommit 1c56de6f42b14eba6bac1e28905a77eb8eb60756[m
+Merge: fdd0cca 3696268
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 23:21:57 2026 -0500
+
+    Merge branch 'master' of https://github.com/Freedomwithin/CoinSentinel
+
+[33mcommit fdd0cca21e579b3346a5b765b624b633c4eb3277[m
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 23:16:11 2026 -0500
+
+    Add comprehensive .gitignore
+
+[33mcommit cbac88ffe00b9acde2207649132c36a870d5130b[m
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 02:57:36 2026 -0500
+
+    Merge branch 'master' of https://github.com/Freedomwithin/CoinSentinel
+
+[33mcommit 6756ce773ebe508522415f7e900d19351d0fd9dc[m
+Merge: 2ec910f 52c19d7
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 02:42:09 2026 -0500
+
+    update
+
+[33mcommit 2ec910f1be34d0822e2c98c43bd02add80a3781f[m
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 02:22:36 2026 -0500
+
+    README.MD
+
+[33mcommit 52c19d70114cea47582b30f516890d38b49616ee[m
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Mon Jan 26 01:59:00 2026 -0500
+
+    CoinSentinel v1.0 - Improved crypto backend + live data
+    
+    - Enhanced src/api_handler.py, src/main_app_pyqt.py, src/utils.py
+    - New data/ folder + improved modules
+    - Clean Python core (no Electron)
+    - Production-ready CoinGecko integration
+
+[33mcommit 28f8fb31e0211acdcc333fcb40ee60b3a72007ec[m
+Author: VirtualMachine <jonathon.koerner@gmail.com>
+Date:   Sun Jan 18 05:31:47 2026 -0500
+
+    Added all src files
+    
+    Currently fully operational.
+
+[33mcommit 8a97b10bfb8c0bcc75e326ed710dbf09f39c59c5[m
+Author: VirtualMachine <166790647+Freedomwithin@users.noreply.github.com>
+Date:   Tue Jan 28 06:29:48 2025 -0500
+
+    Update crypto_data_fetcher.py
+
+[33mcommit 1975f20d41dffd2491f9062d683c39b390672688[m
+Merge: b03fbde d0c51bb
+Author: VirtualMachine <166790647+Freedomwithin@users.noreply.github.com>
+Date:   Tue Jan 28 06:08:28 2025 -0500
+
+    Merge branch 'CoinSentinel_1.0' of https://github.com/Freedomwithin/CoinSentinel into CoinSentinel_1.0
+
+[33mcommit b03fbde96bf633d6d003fc84206121eab6bd8064[m
+Author: VirtualMachine <166790647+Freedomwithin@users.noreply.github.com>
+Date:   Tue Jan 28 05:37:35 2025 -0500
+
+    Update
