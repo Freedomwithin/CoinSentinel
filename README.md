@@ -1,6 +1,15 @@
-<h1 style="text-align: center;"> CoinSentinel </h1>
+<h1 style="text-align: center;">CoinSentinel</h1>
+
+<img
+  width="1914"
+  height="1015"
+  alt="Screenshot 2026-01-27 034824"
+  src="https://github.com/user-attachments/assets/f4edeb6f-c5bb-4b1c-ad55-5e1e4b808a00"
+/>
+
 
 **Advanced Cryptocurrency Tracking & AI-Powered Price Prediction**
+
 
 CoinSentinel is a professional-grade cryptocurrency tracking and analysis application that empowers traders and investors to make data-driven decisions. Built with Python and PyQt5, CoinSentinel combines real-time market data, advanced machine learning predictions, comprehensive portfolio management, and market sentiment analysis in one powerful desktop application.
 
