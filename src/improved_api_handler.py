@@ -1,9 +1,11 @@
-# src/api_handler.py
+# src/api_handler.py - Alternative version
 
 import time
 from typing import Dict, List, Optional
 from pycoingecko import CoinGeckoAPI
 
+
+# In api_handler.py
 class EnhancedCryptoAPIHandler:
     def __init__(self):
         self.cg = CoinGeckoAPI()
@@ -24,6 +26,3 @@ class EnhancedCryptoAPIHandler:
         except Exception as e:
             print(f"API Error in get_top_coins: {e}")
             return []
-
-# This line should be in your test script, not here
-# api = EnhancedCryptoAPIHandler()
