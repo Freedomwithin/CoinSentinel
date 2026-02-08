@@ -181,6 +181,9 @@ class PortfolioTracker:
         # Calculate risk score
         risk_level = self.assess_risk_level(holdings_list)
 
+        # Calculate Gini coefficient
+        gini_score = self.calculate_gini_coefficient(holdings_list, total_value)
+
         return {
             "holdings": holdings_list,
             "total_value": total_value,
@@ -190,9 +193,38 @@ class PortfolioTracker:
             "daily_change": 0,  # Would need historical data
             "daily_change_percent": 0,
             "diversity_score": diversity_score,
+            "gini_score": gini_score,
             "risk_level": risk_level,
             "coin_count": len(holdings_list),
         }
+
+    def calculate_gini_coefficient(self, holdings: List[Dict], total_value: float) -> float:
+        """Calculate Gini coefficient for portfolio inequality (0=perfect equality, 1=max inequality)"""
+        # Probationary score for thin wallets
+        if not holdings or len(holdings) < 3 or total_value < 100:
+            return 0.5
+
+        # Get values of each holding
+        values = [h["current_value"] for h in holdings if h["current_value"] > 0]
+        if not values:
+            return 0.5
+
+        # Sort values
+        values = sorted(values)
+        n = len(values)
+
+        # Gini calculation
+        # G = (2 * sum(i * xi)) / (n * sum(xi)) - (n + 1) / n
+        cumulative_sum = sum((i + 1) * val for i, val in enumerate(values))
+        total_sum = sum(values)
+
+        if total_sum == 0:
+            return 0.5
+
+        gini = (2 * cumulative_sum) / (n * total_sum) - (n + 1) / n
+
+        # Ensure bounds 0-1
+        return max(0.0, min(1.0, gini))
 
     def calculate_diversity_score(self, holdings: List[Dict]) -> int:
         """Calculate portfolio diversity score (0-100)"""
