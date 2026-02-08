@@ -1,6 +1,7 @@
 # api_handler.py - COMPLETE VERSION for YOUR predictor
 
 import time
+import threading
 from typing import Dict, List, Optional
 from pycoingecko import CoinGeckoAPI
 import pandas as pd
@@ -11,8 +12,10 @@ class EnhancedCryptoAPIHandler:
     def __init__(self):
         self.cg = CoinGeckoAPI()
         self.coin_cache = {}
+        self.top_coins_cache = {}  # Cache for top coins list
         self.last_request_time = 0
         self.rate_limit_delay = 0.3  # Lower latency
+        self.lock = threading.Lock() # Thread safety for API calls
 
     def _rate_limit(self):
         """Rate limiting to avoid API throttling"""
@@ -33,19 +36,20 @@ class EnhancedCryptoAPIHandler:
             Dictionary with 'prices' key containing [(timestamp_ms, price), ...] tuples
         """
         try:
-            print(f"\n{'='*60}")
-            print(f"FETCHING COMPREHENSIVE DATA FOR: {coin_id}")
-            print(f"Days: {days}")
-            print(f"{'='*60}")
+            with self.lock:
+                print(f"\n{'='*60}")
+                print(f"FETCHING COMPREHENSIVE DATA FOR: {coin_id}")
+                print(f"Days: {days}")
+                print(f"{'='*60}")
 
-            self._rate_limit()
+                self._rate_limit()
 
-            # Get market chart from CoinGecko
-            market_chart = self.cg.get_coin_market_chart_by_id(
-                id=coin_id,
-                vs_currency='usd',
-                days=days
-            )
+                # Get market chart from CoinGecko
+                market_chart = self.cg.get_coin_market_chart_by_id(
+                    id=coin_id,
+                    vs_currency='usd',
+                    days=days
+                )
 
             if not market_chart or 'prices' not in market_chart:
                 print("❌ No market data received")
@@ -83,19 +87,20 @@ class EnhancedCryptoAPIHandler:
         FIXED version with detailed logging
         """
         try:
-            print(f"\\n{'='*60}")
-            print(f"FETCHING HISTORY FOR: {coin_id}")
-            print(f"Days requested: {days}")
-            print(f"{'='*60}")
-            
-            self._rate_limit()
-            
-            # Get market chart data
-            market_chart = self.cg.get_coin_market_chart_by_id(
-                id=coin_id,
-                vs_currency='usd',
-                days=days
-            )
+            with self.lock:
+                print(f"\\n{'='*60}")
+                print(f"FETCHING HISTORY FOR: {coin_id}")
+                print(f"Days requested: {days}")
+                print(f"{'='*60}")
+
+                self._rate_limit()
+
+                # Get market chart data
+                market_chart = self.cg.get_coin_market_chart_by_id(
+                    id=coin_id,
+                    vs_currency='usd',
+                    days=days
+                )
             
             if not market_chart or 'prices' not in market_chart:
                 print("❌ No market chart data received")
@@ -158,21 +163,30 @@ class EnhancedCryptoAPIHandler:
             return None
 
     def get_top_coins(self, limit=100, vs_currency="usd"):
-        """Get top cryptocurrencies with ALL percentage changes"""
+        """Get top cryptocurrencies with ALL percentage changes (Cached)"""
         try:
-            self._rate_limit()
-            
-            print(f"API: Requesting {limit} coins in {vs_currency}...")
+            # Check cache
+            cache_key = f"{limit}_{vs_currency}"
+            if cache_key in self.top_coins_cache:
+                cache_time, data = self.top_coins_cache[cache_key]
+                if time.time() - cache_time < 60: # 1 minute cache
+                    print(f"API: Returning cached top coins for {cache_key}")
+                    return data
 
-            # CRITICAL: Request percentage changes for 1h, 24h, and 7d
-            coins = self.cg.get_coins_markets(
-                vs_currency=vs_currency,
-                order="market_cap_desc",
-                per_page=limit,
-                page=1,
-                sparkline=False,
-                price_change_percentage="1h,24h,7d"  # THIS IS KEY!
-            )
+            with self.lock:
+                self._rate_limit()
+
+                print(f"API: Requesting {limit} coins in {vs_currency}...")
+
+                # CRITICAL: Request percentage changes for 1h, 24h, and 7d
+                coins = self.cg.get_coins_markets(
+                    vs_currency=vs_currency,
+                    order="market_cap_desc",
+                    per_page=limit,
+                    page=1,
+                    sparkline=False,
+                    price_change_percentage="1h,24h,7d"  # THIS IS KEY!
+                )
 
             print(f"API: Received {len(coins) if coins else 0} coins")
 
@@ -183,6 +197,10 @@ class EnhancedCryptoAPIHandler:
                 has_24h = 'price_change_percentage_24h_in_currency' in sample
                 has_7d = 'price_change_percentage_7d_in_currency' in sample
                 print(f"API: Data check - 1h: {has_1h}, 24h: {has_24h}, 7d: {has_7d}")
+
+            # Update cache
+            if coins:
+                self.top_coins_cache[cache_key] = (time.time(), coins)
 
             return coins
 
@@ -195,18 +213,19 @@ class EnhancedCryptoAPIHandler:
     def get_price(self, coin_ids: List[str], vs_currency: str = "usd") -> Dict:
         """Get current prices for multiple coins"""
         try:
-            self._rate_limit()
-            
-            # Convert list to comma-separated string
-            ids_str = ",".join(coin_ids)
-            
-            result = self.cg.get_price(
-                ids=ids_str,
-                vs_currencies=vs_currency,
-                include_market_cap=True,
-                include_24hr_vol=True,
-                include_24hr_change=True
-            )
+            with self.lock:
+                self._rate_limit()
+
+                # Convert list to comma-separated string
+                ids_str = ",".join(coin_ids)
+
+                result = self.cg.get_price(
+                    ids=ids_str,
+                    vs_currencies=vs_currency,
+                    include_market_cap=True,
+                    include_24hr_vol=True,
+                    include_24hr_change=True
+                )
             
             return result
             
@@ -223,17 +242,18 @@ class EnhancedCryptoAPIHandler:
                 if time.time() - cache_time < 300:
                     return data
             
-            self._rate_limit()
-            
-            # Get basic coin data
-            coin_data = self.cg.get_coin_by_id(
-                id=coin_id,
-                localization=False,
-                tickers=False,
-                market_data=True,
-                community_data=False,
-                developer_data=False
-            )
+            with self.lock:
+                self._rate_limit()
+
+                # Get basic coin data
+                coin_data = self.cg.get_coin_by_id(
+                    id=coin_id,
+                    localization=False,
+                    tickers=False,
+                    market_data=True,
+                    community_data=False,
+                    developer_data=False
+                )
             
             result = {
                 'id': coin_id,
