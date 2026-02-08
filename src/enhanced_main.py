@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
 )
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QBrush, QColor, QFont, QPalette, QPixmap
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -52,6 +52,24 @@ from improved_sentiment_tracker import SentimentTracker
 
 
 # ==================== HELPER CLASSES ====================
+class MarketWorker(QObject):
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(self, api_handler, limit, currency):
+        super().__init__()
+        self.api = api_handler
+        self.limit = limit
+        self.currency = currency
+
+    def run(self):
+        try:
+            coins = self.api.get_top_coins(limit=self.limit, vs_currency=self.currency)
+            self.finished.emit(coins)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class PredictionWorker(QThread):
     prediction_complete = pyqtSignal(dict)
     progress_update = pyqtSignal(int, str)
@@ -157,9 +175,7 @@ class ImprovedMarketTab(QWidget):
         self.api = api_handler
         self.coins_data = []
         self.auto_refresh_enabled = False
-
-        # Apply global stylesheet
-        # self.setStyleSheet(GLOBAL_STYLESHEET)
+        self.worker_thread = None
 
         self.init_ui()
         QTimer.singleShot(100, self.load_coins)
@@ -176,12 +192,6 @@ class ImprovedMarketTab(QWidget):
 
         # Header
         header = QLabel("📊 Market Overview")
-        header.setStyleSheet("""
-            font-size: 24px;
-            font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 10px;
-        """)
         layout.addWidget(header)
 
         # Controls
@@ -239,7 +249,6 @@ class ImprovedMarketTab(QWidget):
 
         # Status
         self.status_label = QLabel("⏳ Loading cryptocurrency data...")
-        self.status_label.setStyleSheet("color: #94a3b8; font-weight: 600; margin: 5px;")
         layout.addWidget(self.status_label)
 
         # Table - FULL VERSION WITH ALL COLUMNS
@@ -279,37 +288,35 @@ class ImprovedMarketTab(QWidget):
         layout.addWidget(self.table)
 
     def load_coins(self):
-        """Load coins with FULL data - not fallback"""
-        try:
-            self.refresh_btn.setEnabled(False)
-            self.refresh_btn.setText("Loading...")
-            self.status_label.setText("⏳ Fetching live data from CoinGecko...")
+        if hasattr(self, 'worker_thread') and self.worker_thread and self.worker_thread.isRunning():
+            return
 
-            limit = int(self.limit_combo.currentText().split()[1])
-            currency = self.currency_combo.currentText().lower()
+        self.refresh_btn.setEnabled(False)
+        self.status_label.setText("⏳ Fetching live data in background...")
 
-            print(f"Fetching {limit} coins in {currency}...")
+        limit = int(self.limit_combo.currentText().split()[1])
+        currency = self.currency_combo.currentText().lower()
 
-            # Get full market data
-            coins = self.api.get_top_coins(limit=limit, vs_currency=currency)
+        self.worker_thread = QThread()
+        self.worker = MarketWorker(self.api, limit, currency)
+        self.worker.moveToThread(self.worker_thread)
 
-            if coins and len(coins) > 0:
-                print(f"✓ Received {len(coins)} coins with data")
-                self.coins_data = coins
-                self.update_table_with_full_data()
-                self.status_label.setText(f"✅ Live data loaded: {len(coins)} coins")
-            else:
-                print("✗ No data received from API")
-                self.status_label.setText("⚠️ No data returned from API - Check connection")
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.handle_data)
+        self.worker.error.connect(lambda e: print(f"Thread Error: {e}"))
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
-        except Exception as e:
-            print(f"Error loading coins: {e}")
-            import traceback
-            traceback.print_exc()
-            self.status_label.setText(f"⚠️ Error: {str(e)[:100]}")
-        finally:
-            self.refresh_btn.setText("🔄 Refresh Data")
-            self.refresh_btn.setEnabled(True)
+        self.worker_thread.start()
+
+    def handle_data(self, coins):
+        if coins:
+            self.coins_data = coins
+            self.update_table_with_full_data()
+            self.status_label.setText(f"✅ Live data loaded: {len(coins)} coins")
+        else:
+            self.status_label.setText("⚠️ No data returned from API - Check connection")
+        self.refresh_btn.setEnabled(True)
 
     def update_table_with_full_data(self):
         """Update table with ALL columns - no fallback"""
@@ -459,28 +466,10 @@ class ImprovedMarketTab(QWidget):
         
         if self.auto_refresh_enabled:
             self.auto_refresh_btn.setText("▶️ Auto-Refresh: ON")
-            self.auto_refresh_btn.setStyleSheet("""
-                QPushButton {
-                    padding: 8px 15px;
-                    background-color: #10b981;
-                    color: white;
-                    border-radius: 8px;
-                    font-weight: 700;
-                }
-            """)
             self.refresh_timer.start()
             self.status_label.setText("✅ Auto-refresh enabled (updates every 60s)")
         else:
             self.auto_refresh_btn.setText("⏸️ Auto-Refresh: OFF")
-            self.auto_refresh_btn.setStyleSheet("""
-                QPushButton {
-                    padding: 8px 15px;
-                    background-color: #64748b;
-                    color: white;
-                    border-radius: 8px;
-                    font-weight: 700;
-                }
-            """)
             self.refresh_timer.stop()
             self.status_label.setText("⏸️ Auto-refresh disabled")
 
@@ -1712,26 +1701,12 @@ class EnhancedCryptoTrackerApp(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("✅ Application ready - Welcome to CoinSentinel AI!")
         
-        # Set application style
-        self.setStyleSheet(
-            """
-            QMainWindow {
-                background-color: #f5f6fa;
-            }
-            QGroupBox {
-                font-weight: bold;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
-            }
-        """
-        )
+        # Load external stylesheet
+        try:
+            with open("src/style.qss", "r") as f:
+                self.setStyleSheet(f.read())
+        except Exception as e:
+            print(f"Error loading stylesheet: {e}")
 
 
 # ==================== MAIN FUNCTION ====================
