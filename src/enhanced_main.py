@@ -94,24 +94,34 @@ class AddTransactionDialog(QDialog):
         layout = QGridLayout()
         layout.addWidget(QLabel("Coin:"), 0, 0)
         self.coin_combo = QComboBox()
+        self.coin_combo.setToolTip("Select the cryptocurrency traded")
+        self.coin_combo.setAccessibleName("Transaction Coin Selection")
         layout.addWidget(self.coin_combo, 0, 1)
         layout.addWidget(QLabel("Type:"), 1, 0)
         self.type_combo = QComboBox()
         self.type_combo.addItems(["Buy", "Sell"])
+        self.type_combo.setToolTip("Select transaction type")
+        self.type_combo.setAccessibleName("Transaction Type Selection")
         layout.addWidget(self.type_combo, 1, 1)
         layout.addWidget(QLabel("Amount:"), 2, 0)
         self.amount_input = QDoubleSpinBox()
         self.amount_input.setRange(0.00000001, 1000000)
         self.amount_input.setDecimals(8)
+        self.amount_input.setToolTip("Enter the amount of coins")
+        self.amount_input.setAccessibleName("Transaction Amount Input")
         layout.addWidget(self.amount_input, 2, 1)
         layout.addWidget(QLabel("Price per Coin:"), 3, 0)
         self.price_input = QDoubleSpinBox()
         self.price_input.setRange(0.00000001, 1000000)
         self.price_input.setDecimals(4)
         self.price_input.setPrefix("$")
+        self.price_input.setToolTip("Enter the price per coin in selected currency")
+        self.price_input.setAccessibleName("Transaction Price Input")
         layout.addWidget(self.price_input, 3, 1)
         layout.addWidget(QLabel("Date:"), 4, 0)
         self.date_input = QLineEdit(datetime.now().strftime("%Y-%m-%d"))
+        self.date_input.setToolTip("Transaction date (YYYY-MM-DD)")
+        self.date_input.setAccessibleName("Transaction Date Input")
         layout.addWidget(self.date_input, 4, 1)
         buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
@@ -181,6 +191,9 @@ class ImprovedMarketTab(QWidget):
         controls_layout.addWidget(QLabel("🔍 Search:"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Type coin name or symbol...")
+        self.search_input.setToolTip("Filter the list by coin name or symbol")
+        self.search_input.setAccessibleName("Search Input")
+        self.search_input.setAccessibleDescription("Enter text to filter the cryptocurrency list by name or symbol")
         self.search_input.textChanged.connect(self.filter_coins)
         self.search_input.setMinimumWidth(200)
         controls_layout.addWidget(self.search_input)
@@ -191,6 +204,8 @@ class ImprovedMarketTab(QWidget):
         controls_layout.addWidget(QLabel("Show:"))
         self.limit_combo = QComboBox()
         self.limit_combo.addItems(["Top 10", "Top 20", "Top 50", "Top 100"])
+        self.limit_combo.setToolTip("Select number of coins to display")
+        self.limit_combo.setAccessibleName("Limit Selection")
         self.limit_combo.currentTextChanged.connect(self.load_coins)
         controls_layout.addWidget(self.limit_combo)
 
@@ -198,6 +213,8 @@ class ImprovedMarketTab(QWidget):
         controls_layout.addWidget(QLabel("Currency:"))
         self.currency_combo = QComboBox()
         self.currency_combo.addItems(["USD", "EUR", "GBP"])
+        self.currency_combo.setToolTip("Select display currency")
+        self.currency_combo.setAccessibleName("Currency Selection")
         self.currency_combo.currentTextChanged.connect(self.load_coins)
         controls_layout.addWidget(self.currency_combo)
 
@@ -205,11 +222,15 @@ class ImprovedMarketTab(QWidget):
 
         # Refresh button
         self.refresh_btn = QPushButton("🔄 Refresh Data")
+        self.refresh_btn.setToolTip("Manually update market data from CoinGecko")
+        self.refresh_btn.setAccessibleName("Refresh Data Button")
         self.refresh_btn.clicked.connect(self.load_coins)
         controls_layout.addWidget(self.refresh_btn)
         
         # Auto-refresh toggle
         self.auto_refresh_btn = QPushButton("⏸️ Auto-Refresh: OFF")
+        self.auto_refresh_btn.setToolTip("Toggle automatic updates every 60 seconds")
+        self.auto_refresh_btn.setAccessibleName("Auto-Refresh Toggle Button")
         self.auto_refresh_btn.clicked.connect(self.toggle_auto_refresh)
         controls_layout.addWidget(self.auto_refresh_btn)
 
@@ -500,16 +521,22 @@ class EnhancedPredictionTab(QWidget):
         # Coin selection
         controls_layout.addWidget(QLabel("Select Coin:"))
         self.coin_combo = QComboBox()
+        self.coin_combo.setToolTip("Select a cryptocurrency to analyze")
+        self.coin_combo.setAccessibleName("Coin Selection for Prediction")
         controls_layout.addWidget(self.coin_combo)
 
         # Time frame selection
         controls_layout.addWidget(QLabel("Time Frame:"))
         self.time_frame_combo = QComboBox()
         self.time_frame_combo.addItems(["24 Hours", "3 Days", "7 Days", "30 Days"])
+        self.time_frame_combo.setToolTip("Select prediction time horizon")
+        self.time_frame_combo.setAccessibleName("Time Frame Selection")
         controls_layout.addWidget(self.time_frame_combo)
 
         # Prediction button
         self.predict_btn = QPushButton("🔮 Predict Price")
+        self.predict_btn.setToolTip("Generate AI-powered price prediction based on historical data")
+        self.predict_btn.setAccessibleName("Predict Price Button")
         self.predict_btn.clicked.connect(self.run_prediction)
         self.predict_btn.setStyleSheet(
             """
@@ -529,6 +556,8 @@ class EnhancedPredictionTab(QWidget):
         
         # Export prediction button
         self.export_pred_btn = QPushButton("💾 Save Prediction")
+        self.export_pred_btn.setToolTip("Run a prediction first to enable export")
+        self.export_pred_btn.setAccessibleName("Export Prediction Button")
         self.export_pred_btn.clicked.connect(self.export_prediction)
         self.export_pred_btn.setEnabled(False)
         self.export_pred_btn.setStyleSheet(
@@ -790,6 +819,7 @@ class EnhancedPredictionTab(QWidget):
                 **result
             }
             self.export_pred_btn.setEnabled(True)
+            self.export_pred_btn.setToolTip("Save current prediction results to JSON file")
 
             # Format results
             current_price = result["current_price"]
@@ -993,6 +1023,8 @@ class EnhancedPortfolioTab(QWidget):
         # Top bar with buttons and currency selection
         top_bar = QHBoxLayout()
         self.add_btn = QPushButton("➕ Add Transaction")
+        self.add_btn.setToolTip("Record a new buy or sell transaction")
+        self.add_btn.setAccessibleName("Add Transaction Button")
         self.add_btn.setStyleSheet(
             """
             QPushButton {
@@ -1009,6 +1041,8 @@ class EnhancedPortfolioTab(QWidget):
         )
         
         self.refresh_btn = QPushButton("🔄 Refresh")
+        self.refresh_btn.setToolTip("Update current prices and portfolio value")
+        self.refresh_btn.setAccessibleName("Refresh Portfolio Button")
         self.refresh_btn.setStyleSheet(
             """
             QPushButton {
@@ -1025,6 +1059,8 @@ class EnhancedPortfolioTab(QWidget):
         )
         
         self.export_btn = QPushButton("📤 Export to CSV")
+        self.export_btn.setToolTip("Download portfolio data as CSV")
+        self.export_btn.setAccessibleName("Export Portfolio Button")
         self.export_btn.setStyleSheet(
             """
             QPushButton {
@@ -1362,6 +1398,8 @@ class EnhancedSentimentTab(QWidget):
 
         # Refresh button
         refresh_btn = QPushButton("🔄 Refresh Sentiment Data")
+        refresh_btn.setToolTip("Update market sentiment data from Alternative.me and CoinGecko")
+        refresh_btn.setAccessibleName("Refresh Sentiment Button")
         refresh_btn.clicked.connect(self.refresh_sentiment)
         refresh_btn.setStyleSheet(
             """
@@ -1454,6 +1492,8 @@ class EnhancedSentimentTab(QWidget):
         controls_layout.addWidget(self.coin_combo)
 
         self.analyze_btn = QPushButton("🔍 Analyze Sentiment")
+        self.analyze_btn.setToolTip("Analyze sentiment for selected coin based on recent data")
+        self.analyze_btn.setAccessibleName("Analyze Coin Sentiment Button")
         self.analyze_btn.clicked.connect(self.analyze_coin_sentiment)
         self.analyze_btn.setStyleSheet(
             """
