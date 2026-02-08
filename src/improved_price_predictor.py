@@ -208,20 +208,19 @@ class AdvancedPricePredictor:
             model_path = os.path.join(self.model_dir, f"{coin_id}_model.joblib")
             scaler_path = os.path.join(self.model_dir, f"{coin_id}_scaler.joblib")
 
-            joblib.dump(
-                {
-                    "rf": model_predictions["rf"]["model"],
-                    "gb": model_predictions["gb"]["model"],
-                },
-                model_path,
-            )
+            simple_models = {
+                "rf": model_predictions["rf"]["model"],
+                "gb": model_predictions["gb"]["model"],
+            }
+
+            joblib.dump(simple_models, model_path)
             joblib.dump(scaler, scaler_path)
 
             # Update cache
             self.models[coin_id] = {
                 "ensemble_mae": ensemble_mae,
                 "ensemble_rmse": ensemble_rmse,
-                "models": model_predictions,
+                "models": simple_models,
                 "last_trained": datetime.now(),
                 "days_trained": days,
                 "scaler": scaler,
@@ -300,7 +299,9 @@ class AdvancedPricePredictor:
 
             # Adjust prediction based on time frame
             time_frame_adjustment = 1.0
-            if time_frame == 7:  # 7 days
+            if time_frame == 3:  # 3 days (72h)
+                time_frame_adjustment = 1.2
+            elif time_frame == 7:  # 7 days
                 time_frame_adjustment = 1.5
             elif time_frame == 30:  # 30 days
                 time_frame_adjustment = 2.0
@@ -376,6 +377,8 @@ class AdvancedPricePredictor:
         # Time frame specific insights
         if time_frame == 1:
             insights.append("Short-term prediction (24 hours)")
+        elif time_frame == 3:
+            insights.append("Short-term prediction (72 hours)")
         elif time_frame == 7:
             insights.append("Medium-term prediction (7 days)")
         else:

@@ -1,4 +1,4 @@
-# src/api_handler.py
+# api_handler.py - COMPLETE VERSION for YOUR predictor
 
 import time
 from typing import Dict, List, Optional
@@ -12,34 +12,72 @@ class EnhancedCryptoAPIHandler:
         self.cg = CoinGeckoAPI()
         self.coin_cache = {}
         self.last_request_time = 0
-        self.rate_limit_delay = 1.5  # seconds between requests
+        self.rate_limit_delay = 1.5
 
     def _rate_limit(self):
-        """Implement rate limiting to avoid API throttling"""
+        """Rate limiting to avoid API throttling"""
         current_time = time.time()
-        time_since_last_request = current_time - self.last_request_time
-        if time_since_last_request < self.rate_limit_delay:
-            time.sleep(self.rate_limit_delay - time_since_last_request)
+        time_since_last = current_time - self.last_request_time
+
+        if time_since_last < self.rate_limit_delay:
+            time.sleep(self.rate_limit_delay - time_since_last)
+
         self.last_request_time = time.time()
 
-    def get_top_coins(self, limit=100, vs_currency="usd"):
-        """Get top cryptocurrencies by market cap"""
-        try:
-            self._rate_limit()
-            # Get coin list with market data
-            coins = self.cg.get_coins_markets(
-                vs_currency=vs_currency,
-                order="market_cap_desc",
-                per_page=limit,
-                page=1,
-                sparkline=False,
-                price_change_percentage="1h,24h,7d",
-            )
-            return coins
-        except Exception as e:
-            print(f"API Error in get_top_coins: {e}")
-            return []
+    # ==================== CRITICAL METHOD FOR YOUR PREDICTOR ====================
+    def get_comprehensive_coin_data(self, coin_id, days=90):
+        """
+        Get comprehensive data in the format expected by AdvancedPricePredictor
 
+        Returns:
+            Dictionary with 'prices' key containing [(timestamp_ms, price), ...] tuples
+        """
+        try:
+            print(f"\n{'='*60}")
+            print(f"FETCHING COMPREHENSIVE DATA FOR: {coin_id}")
+            print(f"Days: {days}")
+            print(f"{'='*60}")
+
+            self._rate_limit()
+
+            # Get market chart from CoinGecko
+            market_chart = self.cg.get_coin_market_chart_by_id(
+                id=coin_id,
+                vs_currency='usd',
+                days=days
+            )
+
+            if not market_chart or 'prices' not in market_chart:
+                print("❌ No market data received")
+                return None
+
+            # CoinGecko returns prices as [[timestamp_ms, price], ...]
+            prices = market_chart['prices']
+
+            print(f"✓ Received {len(prices)} price points")
+
+            # Your predictor expects the data in this exact format
+            result = {
+                'prices': prices,  # Already in [(timestamp, price), ...] format
+                'market_caps': market_chart.get('market_caps', []),
+                'total_volumes': market_chart.get('total_volumes', [])
+            }
+
+            print(f"✓ Data prepared successfully")
+            if prices:
+                print(f"  Price range: ${min(p[1] for p in prices):.2f} - ${max(p[1] for p in prices):.2f}")
+                print(f"  Date range: {len(prices)} data points over {days} days")
+            print(f"{'='*60}\n")
+
+            return result
+
+        except Exception as e:
+            print(f"❌ Error in get_comprehensive_coin_data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    # ==================== MARKET DATA METHODS ====================
     def get_coin_history(self, coin_id: str, days: int = 90) -> Optional[pd.DataFrame]:
         """
         Get historical OHLCV data for a coin
@@ -124,17 +162,43 @@ class EnhancedCryptoAPIHandler:
             traceback.print_exc()
             return None
 
-    def get_price(self, coin_ids: List[str], vs_currency: str = "usd") -> Dict:
-        """
-        Get current prices for multiple coins
-        
-        Args:
-            coin_ids: List of coin IDs
-            vs_currency: Currency to get prices in
+    def get_top_coins(self, limit=100, vs_currency="usd"):
+        """Get top cryptocurrencies with ALL percentage changes"""
+        try:
+            self._rate_limit()
             
-        Returns:
-            Dictionary mapping coin_id to price data
-        """
+            print(f"API: Requesting {limit} coins in {vs_currency}...")
+
+            # CRITICAL: Request percentage changes for 1h, 24h, and 7d
+            coins = self.cg.get_coins_markets(
+                vs_currency=vs_currency,
+                order="market_cap_desc",
+                per_page=limit,
+                page=1,
+                sparkline=False,
+                price_change_percentage="1h,24h,7d"  # THIS IS KEY!
+            )
+
+            print(f"API: Received {len(coins) if coins else 0} coins")
+
+            # Verify we have the data
+            if coins and len(coins) > 0:
+                sample = coins[0]
+                has_1h = 'price_change_percentage_1h_in_currency' in sample
+                has_24h = 'price_change_percentage_24h_in_currency' in sample
+                has_7d = 'price_change_percentage_7d_in_currency' in sample
+                print(f"API: Data check - 1h: {has_1h}, 24h: {has_24h}, 7d: {has_7d}")
+
+            return coins
+
+        except Exception as e:
+            print(f"API Error in get_top_coins: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def get_price(self, coin_ids: List[str], vs_currency: str = "usd") -> Dict:
+        """Get current prices for multiple coins"""
         try:
             self._rate_limit()
             
@@ -156,20 +220,11 @@ class EnhancedCryptoAPIHandler:
             return {}
 
     def get_coin_info(self, coin_id: str) -> Dict:
-        """
-        Get detailed information about a specific coin
-        
-        Args:
-            coin_id: CoinGecko coin ID
-            
-        Returns:
-            Dictionary with coin information
-        """
+        """Get detailed information about a specific coin"""
         try:
-            # Check cache first
+            # Check cache first (5 min cache)
             if coin_id in self.coin_cache:
                 cache_time, data = self.coin_cache[coin_id]
-                # Cache for 5 minutes
                 if time.time() - cache_time < 300:
                     return data
             
@@ -208,39 +263,57 @@ class EnhancedCryptoAPIHandler:
             }
 
     def get_coin_sentiment(self, coin_id: str) -> Dict:
-        """
-        Get sentiment data for a specific coin (mock implementation)
-        
-        Args:
-            coin_id: CoinGecko coin ID
-            
-        Returns:
-            Dictionary with sentiment percentages
-        """
+        """Get sentiment data for a specific coin (simplified)"""
         try:
-            # This is a simplified version - real implementation would use
-            # social media data, news sentiment, etc.
+            # Get recent price data as proxy for sentiment
+            data = self.get_comprehensive_coin_data(coin_id, days=7)
             
-            # Get recent price action as a proxy for sentiment
-            df = self.get_coin_history(coin_id, days=7)
-            
-            if df is not None and len(df) > 0:
+            if data and 'prices' in data and len(data['prices']) > 0:
                 # Calculate price change
-                price_change = ((df['close'].iloc[-1] / df['close'].iloc[0]) - 1) * 100
+                first_price = data['prices'][0][1]
+                last_price = data['prices'][-1][1]
+                price_change = ((last_price / first_price) - 1) * 100
                 
                 # Simple sentiment based on price action
                 if price_change > 5:
-                    return {"positive": 70, "negative": 10, "neutral": 20}
+                    return {"positive": 70.0, "negative": 10.0, "neutral": 20.0}
                 elif price_change > 0:
-                    return {"positive": 55, "negative": 20, "neutral": 25}
+                    return {"positive": 55.0, "negative": 20.0, "neutral": 25.0}
                 elif price_change > -5:
-                    return {"positive": 25, "negative": 35, "neutral": 40}
+                    return {"positive": 25.0, "negative": 35.0, "neutral": 40.0}
                 else:
-                    return {"positive": 15, "negative": 65, "neutral": 20}
+                    return {"positive": 15.0, "negative": 65.0, "neutral": 20.0}
             
             # Default neutral sentiment
-            return {"positive": 33, "negative": 33, "neutral": 34}
+            return {"positive": 33.0, "negative": 33.0, "neutral": 34.0}
             
         except Exception as e:
             print(f"Error getting coin sentiment: {e}")
-            return {"positive": 33, "negative": 33, "neutral": 34}
+            return {"positive": 33.0, "negative": 33.0, "neutral": 34.0}
+
+
+# Example usage and testing
+if __name__ == "__main__":
+    print("Testing EnhancedCryptoAPIHandler...")
+
+    api = EnhancedCryptoAPIHandler()
+
+    # Test comprehensive data (for predictor)
+    print("\n1. Testing get_comprehensive_coin_data...")
+    data = api.get_comprehensive_coin_data('bitcoin', days=30)
+    if data:
+        print(f"✓ Success! Got {len(data['prices'])} price points")
+    else:
+        print("✗ Failed to get data")
+
+    # Test market data (for market tab)
+    print("\n2. Testing get_top_coins...")
+    coins = api.get_top_coins(limit=5)
+    if coins:
+        print(f"✓ Success! Got {len(coins)} coins")
+        for coin in coins[:3]:
+            print(f"  - {coin['name']}: ${coin['current_price']:,.2f}")
+    else:
+        print("✗ Failed to get coins")
+
+    print("\n✓ All tests complete!")
