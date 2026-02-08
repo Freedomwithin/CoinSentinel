@@ -12,7 +12,7 @@ class EnhancedCryptoAPIHandler:
         self.cg = CoinGeckoAPI()
         self.coin_cache = {}
         self.last_request_time = 0
-        self.rate_limit_delay = 1.5
+        self.rate_limit_delay = 0.3
 
     def _rate_limit(self):
         """Rate limiting to avoid API throttling"""
@@ -90,8 +90,6 @@ class EnhancedCryptoAPIHandler:
             
             if hasattr(self, '_rate_limit'):
                 self._rate_limit()
-            else:
-                time.sleep(1)
             
             # Get market chart data
             market_chart = self.cg.get_coin_market_chart_by_id(
