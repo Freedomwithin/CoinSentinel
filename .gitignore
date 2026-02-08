@@ -80,3 +80,8 @@ Thumbs.db
 
 # Electron dev cache
 electron-debug.log
+
+# ML Models and Cache
+*.joblib
+*_cache.json
+models/

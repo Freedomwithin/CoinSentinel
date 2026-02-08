@@ -235,97 +235,130 @@ class AdvancedPricePredictor:
             print(f"Training error: {e}")
             return False, f"Training error: {str(e)}"
 
-    def predict_price(
-        self, coin_id: str, current_price: float, time_frame: int = 1
-    ) -> Dict:
-        """Predict price change for the selected time frame"""
+    def predict_price(self, coin_id: str, current_price: float, time_frame: int = 1):
+        """
+        FIXED prediction method with detailed logging
+        """
         try:
-            # Load model if not in memory
-            if coin_id not in self.models:
-                model_path = os.path.join(self.model_dir, f"{coin_id}_model.joblib")
-                scaler_path = os.path.join(self.model_dir, f"{coin_id}_scaler.joblib")
+            print(f"\\n{'='*60}")
+            print(f"PREDICTION REQUEST")
+            print(f"Coin: {coin_id}")
+            print(f"Current Price: ${current_price:,.2f}")
+            print(f"Time Frame: {time_frame} days")
+            print(f"{'='*60}")
 
-                if not os.path.exists(model_path):
-                    # Train model if it doesn't exist
-                    success, message = self.train_ensemble_model(
-                        coin_id, days=max(time_frame * 30, 90)
-                    )
-                    if not success:
-                        return self._fallback_prediction(current_price, time_frame)
+            # Get historical data
+            days = max(time_frame * 30, 90)
+            print(f"→ Fetching {days} days of historical data...")
 
-                # Load trained models
-                try:
-                    models_dict = joblib.load(model_path)
-                    scaler = joblib.load(scaler_path)
+            df = self.api.get_coin_history(coin_id, days=days)
 
-                    self.models[coin_id] = {"models": models_dict, "scaler": scaler}
-                except Exception as e:
-                    print(f"Error loading model: {e}")
+            if df is None:
+                print("❌ get_coin_history returned None")
+                return self._fallback_prediction(current_price, time_frame)
+
+            print(f"✓ Received DataFrame with {len(df)} rows")
+
+            if len(df) < 30:
+                print(f"❌ Insufficient data: {len(df)} rows (need 30+)")
+                return self._fallback_prediction(current_price, time_frame)
+
+            # Prepare features
+            print(f"→ Calculating technical indicators...")
+            X, y = self.prepare_features(df)
+
+            if len(X) == 0:
+                print("❌ prepare_features returned empty array")
+                return self._fallback_prediction(current_price, time_frame)
+
+            print(f"✓ Features prepared: {X.shape[0]} samples, {X.shape[1]} features")
+
+            # Check if we need to train
+            model_path = os.path.join(self.model_dir, f"{coin_id}_model.joblib")
+            scaler_path = os.path.join(self.model_dir, f"{coin_id}_scaler.joblib")
+
+            if coin_id not in self.models and not os.path.exists(model_path):
+                print(f"→ No existing model found, training new model...")
+                success, message = self.train_ensemble_model(coin_id, days=days)
+
+                if not success:
+                    print(f"❌ Training failed: {message}")
                     return self._fallback_prediction(current_price, time_frame)
 
-            # Get latest data for prediction based on time frame
-            days = max(time_frame * 30, 90)  # At least 90 days of history
-            df = self.api.get_coin_history(coin_id, days=days)
-            if df is None or len(df) < 10:
-                return self._fallback_prediction(current_price, time_frame)
+                print(f"✓ Model trained successfully")
 
-            # Prepare features from latest data
-            X, _ = self.prepare_features(df)
-            if len(X) == 0:
-                return self._fallback_prediction(current_price, time_frame)
+            # Load model if needed
+            if coin_id not in self.models:
+                print(f"→ Loading model from disk...")
+                try:
+                    import joblib
+                    models_dict = joblib.load(model_path)
+                    scaler = joblib.load(scaler_path)
+                    self.models[coin_id] = {"models": models_dict, "scaler": scaler}
+                    print(f"✓ Model loaded successfully")
+                except Exception as e:
+                    print(f"❌ Model loading failed: {e}")
+                    return self._fallback_prediction(current_price, time_frame)
 
-            # Get latest feature vector
+            # Make prediction
+            print(f"→ Making prediction...")
+
             latest_features = X[-1].reshape(1, -1)
-
-            # Scale features
             scaler = self.models[coin_id]["scaler"]
             latest_scaled = scaler.transform(latest_features)
 
-            # Make ensemble prediction
+            # Ensemble prediction
             predictions = []
-            model_weights = {"rf": 0.6, "gb": 0.4}  # Weighted ensemble
+            model_weights = {"rf": 0.6, "gb": 0.4}
 
             for model_name, weight in model_weights.items():
                 if model_name in self.models[coin_id]["models"]:
                     model = self.models[coin_id]["models"][model_name]
                     pred = model.predict(latest_scaled)[0]
                     predictions.append(pred * weight)
+                    print(f"  {model_name.upper()}: {pred:.2f}% (weight: {weight})")
 
-            # Calculate predicted price change percentage
-            if predictions:
-                predicted_change = sum(predictions)
-            else:
-                predicted_change = 0
+            if not predictions:
+                print("❌ No models available for prediction")
+                return self._fallback_prediction(current_price, time_frame)
 
-            # Adjust prediction based on time frame
+            predicted_change = sum(predictions)
+
+            # Adjust for time frame
             time_frame_adjustment = 1.0
-            if time_frame == 3:  # 3 days (72h)
-                time_frame_adjustment = 1.2
-            elif time_frame == 7:  # 7 days
+            if time_frame == 7:
                 time_frame_adjustment = 1.5
-            elif time_frame == 30:  # 30 days
+            elif time_frame == 30:
                 time_frame_adjustment = 2.0
 
             predicted_change *= time_frame_adjustment
 
-            # Calculate prediction details
+            print(f"  Raw prediction: {sum(predictions):.2f}%")
+            print(f"  Time adjustment: {time_frame_adjustment}x")
+            print(f"  Final prediction: {predicted_change:.2f}%")
+
+            # Calculate results
             predicted_price = current_price * (1 + predicted_change / 100)
 
-            # Calculate confidence based on recent volatility and time frame
             recent_volatility = df["close"].pct_change().std() * 100
             confidence = max(0, 100 - recent_volatility * 2 - time_frame * 2)
-            confidence = min(confidence, 95)  # Cap at 95%
+            confidence = min(confidence, 95)
 
-            # Generate insights
-            insights = self._generate_insights(df, predicted_change, time_frame)
-
-            # Determine direction and strength
             direction = "bullish" if predicted_change > 0 else "bearish"
             strength = (
-                "strong"
-                if abs(predicted_change) > 5
-                else "moderate" if abs(predicted_change) > 2 else "weak"
+                "strong" if abs(predicted_change) > 5
+                else "moderate" if abs(predicted_change) > 2
+                else "weak"
             )
+
+            insights = self._generate_insights(df, predicted_change, time_frame)
+
+            print(f"✓ PREDICTION COMPLETE")
+            print(f"  Predicted Price: ${predicted_price:,.2f}")
+            print(f"  Change: {predicted_change:+.2f}%")
+            print(f"  Direction: {direction} ({strength})")
+            print(f"  Confidence: {confidence:.1f}%")
+            print(f"{'='*60}\\n")
 
             return {
                 "current_price": current_price,
@@ -338,12 +371,14 @@ class AdvancedPricePredictor:
                 "timestamp": datetime.now(),
                 "insights": insights,
                 "is_fallback": False,
+                "historical_prices": df["close"].values.tolist()[-60:] if len(df) > 0 else []
             }
 
         except Exception as e:
-            print(f"Prediction error for {coin_id}: {e}")
+            print(f"❌ PREDICTION ERROR: {e}")
             import traceback
             traceback.print_exc()
+            print(f"{'='*60}\\n")
             return self._fallback_prediction(current_price, time_frame)
 
     def _fallback_prediction(self, current_price: float, time_frame: int = 1) -> Dict:

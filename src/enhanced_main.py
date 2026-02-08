@@ -140,39 +140,44 @@ class AddTransactionDialog(QDialog):
 
 # ==================== TAB CLASSES ====================
 class ImprovedMarketTab(QWidget):
-    """Enhanced market overview with fallback to sample data"""
+    """Enhanced market overview with ALL columns visible"""
 
     def __init__(self, api_handler):
         super().__init__()
         self.api = api_handler
         self.coins_data = []
         self.auto_refresh_enabled = False
+
+        # Apply global stylesheet
+        # self.setStyleSheet(GLOBAL_STYLESHEET)
+
         self.init_ui()
         QTimer.singleShot(100, self.load_coins)
         
-        # Auto-refresh timer (every 60 seconds)
+        # Auto-refresh timer
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.load_coins)
-        self.refresh_timer.setInterval(60000)  # 60 seconds
+        self.refresh_timer.setInterval(60000)
 
     def init_ui(self):
-        # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        content_widget = QWidget()
-        scroll.setWidget(content_widget)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(15)
 
-        layout = QVBoxLayout(content_widget)
+        # Header
+        header = QLabel("📊 Market Overview")
+        header.setStyleSheet("""
+            font-size: 24px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 10px;
+        """)
+        layout.addWidget(header)
 
-        # Title
-        title_label = QLabel("📊 Market Overview - Cryptocurrency Dashboard")
-        title_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin: 10px; color: #2c3e50;"
-        )
-        layout.addWidget(title_label)
-
-        # Search and controls
+        # Controls
         controls_layout = QHBoxLayout()
+
+        # Search
         controls_layout.addWidget(QLabel("🔍 Search:"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Type coin name or symbol...")
@@ -182,16 +187,17 @@ class ImprovedMarketTab(QWidget):
 
         controls_layout.addSpacing(20)
 
-        # Options
+        # Limit
         controls_layout.addWidget(QLabel("Show:"))
         self.limit_combo = QComboBox()
-        self.limit_combo.addItems(["Top 10", "Top 20", "Top 50"])
+        self.limit_combo.addItems(["Top 10", "Top 20", "Top 50", "Top 100"])
         self.limit_combo.currentTextChanged.connect(self.load_coins)
         controls_layout.addWidget(self.limit_combo)
 
+        # Currency
         controls_layout.addWidget(QLabel("Currency:"))
         self.currency_combo = QComboBox()
-        self.currency_combo.addItems(["USD", "EUR"])
+        self.currency_combo.addItems(["USD", "EUR", "GBP"])
         self.currency_combo.currentTextChanged.connect(self.load_coins)
         controls_layout.addWidget(self.currency_combo)
 
@@ -200,70 +206,59 @@ class ImprovedMarketTab(QWidget):
         # Refresh button
         self.refresh_btn = QPushButton("🔄 Refresh Data")
         self.refresh_btn.clicked.connect(self.load_coins)
-        self.refresh_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #3498db;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """
-        )
         controls_layout.addWidget(self.refresh_btn)
         
         # Auto-refresh toggle
         self.auto_refresh_btn = QPushButton("⏸️ Auto-Refresh: OFF")
         self.auto_refresh_btn.clicked.connect(self.toggle_auto_refresh)
-        self.auto_refresh_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #95a5a6;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
-        """
-        )
         controls_layout.addWidget(self.auto_refresh_btn)
 
         controls_layout.addStretch()
         layout.addLayout(controls_layout)
 
-        # Status label
+        # Status
         self.status_label = QLabel("⏳ Loading cryptocurrency data...")
-        self.status_label.setStyleSheet(
-            "color: #7f8c8d; font-weight: bold; margin: 5px;"
-        )
+        self.status_label.setStyleSheet("color: #94a3b8; font-weight: 600; margin: 5px;")
         layout.addWidget(self.status_label)
 
-        # Create table
+        # Table - FULL VERSION WITH ALL COLUMNS
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            ["Rank", "Coin", "Symbol", "Price", "24h Change", "Market Cap"]
-        )
+        self.table.setColumnCount(10)  # Increased from 6 to 10!
+        self.table.setHorizontalHeaderLabels([
+            "Rank",
+            "Coin",
+            "Symbol",
+            "Price",
+            "1h %",
+            "24h %",
+            "7d %",
+            "24h Volume",
+            "Market Cap",
+            "Circulating Supply"
+        ])
+
+        # Set column widths
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Rank
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Coin name
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Symbol
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Price
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 1h
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 24h
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 7d
+        header.setSectionResizeMode(7, QHeaderView.Stretch)  # Volume
+        header.setSectionResizeMode(8, QHeaderView.Stretch)  # Market Cap
+        header.setSectionResizeMode(9, QHeaderView.Stretch)  # Supply
+
         self.table.setMinimumSize(600, 400)
         self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setStretchLastSection(True)
 
         layout.addWidget(self.table)
 
-        # Set main layout
-        outer_layout = QVBoxLayout(self)
-        outer_layout.addWidget(scroll)
-        self.setLayout(outer_layout)
-
     def load_coins(self):
+        """Load coins with FULL data - not fallback"""
         try:
             self.refresh_btn.setEnabled(False)
             self.refresh_btn.setText("Loading...")
@@ -272,124 +267,152 @@ class ImprovedMarketTab(QWidget):
             limit = int(self.limit_combo.currentText().split()[1])
             currency = self.currency_combo.currentText().lower()
 
+            print(f"Fetching {limit} coins in {currency}...")
+
+            # Get full market data
             coins = self.api.get_top_coins(limit=limit, vs_currency=currency)
 
             if coins and len(coins) > 0:
+                print(f"✓ Received {len(coins)} coins with data")
                 self.coins_data = coins
-                self.update_table_with_real_data()
+                self.update_table_with_full_data()
                 self.status_label.setText(f"✅ Live data loaded: {len(coins)} coins")
             else:
-                self.status_label.setText("⚠️ No data returned from API")
-                self.show_sample_data()
+                print("✗ No data received from API")
+                self.status_label.setText("⚠️ No data returned from API - Check connection")
+
         except Exception as e:
             print(f"Error loading coins: {e}")
-            self.status_label.setText(f"⚠️ Error: {str(e)[:50]}... - Using sample data")
-            self.show_sample_data()
+            import traceback
+            traceback.print_exc()
+            self.status_label.setText(f"⚠️ Error: {str(e)[:100]}")
         finally:
             self.refresh_btn.setText("🔄 Refresh Data")
             self.refresh_btn.setEnabled(True)
 
-    def update_table_with_real_data(self):
+    def update_table_with_full_data(self):
+        """Update table with ALL columns - no fallback"""
         if not self.coins_data:
+            print("No coins data to display")
             return
 
         self.table.setRowCount(len(self.coins_data))
+        print(f"Updating table with {len(self.coins_data)} rows...")
 
         for row, coin in enumerate(self.coins_data):
-            rank = coin.get("market_cap_rank", row + 1)
-            name = coin.get("name", "Unknown")
-            symbol = coin.get("symbol", "").upper()
-            price = coin.get("current_price", 0)
-            change_24h = coin.get("price_change_percentage_24h_in_currency", 0) or 0
-            market_cap = coin.get("market_cap", 0)
+            try:
+                # Extract all data
+                rank = coin.get("market_cap_rank", row + 1)
+                name = coin.get("name", "Unknown")
+                symbol = coin.get("symbol", "").upper()
+                price = coin.get("current_price", 0)
 
-            self.table.setItem(row, 0, QTableWidgetItem(str(rank)))
-            self.table.setItem(row, 1, QTableWidgetItem(name))
-            self.table.setItem(row, 2, QTableWidgetItem(symbol))
+                # Get all percentage changes
+                change_1h = coin.get("price_change_percentage_1h_in_currency", 0) or 0
+                change_24h = coin.get("price_change_percentage_24h_in_currency", 0) or 0
+                change_7d = coin.get("price_change_percentage_7d_in_currency", 0) or 0
 
-            if price >= 1:
-                price_text = f"${price:,.2f}"
-            elif price >= 0.0001:
-                price_text = f"${price:.4f}"
-            else:
-                price_text = f"${price:.8f}"
-            self.table.setItem(row, 3, QTableWidgetItem(price_text))
+                volume_24h = coin.get("total_volume", 0)
+                market_cap = coin.get("market_cap", 0)
+                circulating_supply = coin.get("circulating_supply", 0)
 
-            change_item = QTableWidgetItem(f"{change_24h:+.2f}%")
-            if change_24h > 0:
-                change_item.setForeground(QBrush(QColor("#27ae60")))
-            elif change_24h < 0:
-                change_item.setForeground(QBrush(QColor("#e74c3c")))
-            self.table.setItem(row, 4, change_item)
+                # Column 0: Rank
+                rank_item = QTableWidgetItem(str(rank))
+                rank_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row, 0, rank_item)
 
-            if market_cap >= 1e12:
-                mcap_text = f"${market_cap/1e12:.2f}T"
-            elif market_cap >= 1e9:
-                mcap_text = f"${market_cap/1e9:.2f}B"
-            elif market_cap >= 1e6:
-                mcap_text = f"${market_cap/1e6:.2f}M"
-            else:
-                mcap_text = f"${market_cap:,.0f}"
-            self.table.setItem(row, 5, QTableWidgetItem(mcap_text))
+                # Column 1: Coin Name
+                self.table.setItem(row, 1, QTableWidgetItem(name))
 
-        self.table.resizeColumnsToContents()
+                # Column 2: Symbol
+                symbol_item = QTableWidgetItem(symbol)
+                symbol_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row, 2, symbol_item)
 
-    def show_sample_data(self):
-        sample_coins = [
-            {
-                "name": "Bitcoin",
-                "symbol": "btc",
-                "price": 45123.45,
-                "change": 2.34,
-                "market_cap": 850200000000,
-                "rank": 1,
-            },
-            {
-                "name": "Ethereum",
-                "symbol": "eth",
-                "price": 2456.78,
-                "change": 1.23,
-                "market_cap": 295400000000,
-                "rank": 2,
-            },
-            {
-                "name": "Solana",
-                "symbol": "sol",
-                "price": 102.34,
-                "change": 5.67,
-                "market_cap": 44800000000,
-                "rank": 3,
-            },
-        ]
+                # Column 3: Price
+                if price >= 1:
+                    price_text = f"${price:,.2f}"
+                elif price >= 0.01:
+                    price_text = f"${price:.4f}"
+                else:
+                    price_text = f"${price:.8f}"
+                price_item = QTableWidgetItem(price_text)
+                price_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row, 3, price_item)
 
-        self.table.setRowCount(len(sample_coins))
+                # Column 4: 1h Change
+                change_1h_item = QTableWidgetItem(f"{change_1h:+.2f}%")
+                change_1h_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if change_1h > 0:
+                    change_1h_item.setForeground(QBrush(QColor("#10b981")))
+                elif change_1h < 0:
+                    change_1h_item.setForeground(QBrush(QColor("#ef4444")))
+                self.table.setItem(row, 4, change_1h_item)
 
-        for row, coin in enumerate(sample_coins):
-            self.table.setItem(row, 0, QTableWidgetItem(str(coin["rank"])))
-            self.table.setItem(row, 1, QTableWidgetItem(coin["name"]))
-            self.table.setItem(row, 2, QTableWidgetItem(coin["symbol"].upper()))
+                # Column 5: 24h Change
+                change_24h_item = QTableWidgetItem(f"{change_24h:+.2f}%")
+                change_24h_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if change_24h > 0:
+                    change_24h_item.setForeground(QBrush(QColor("#10b981")))
+                elif change_24h < 0:
+                    change_24h_item.setForeground(QBrush(QColor("#ef4444")))
+                self.table.setItem(row, 5, change_24h_item)
 
-            price_text = (
-                f"${coin['price']:,.2f}"
-                if coin["price"] >= 1
-                else f"${coin['price']:.4f}"
-            )
-            self.table.setItem(row, 3, QTableWidgetItem(price_text))
+                # Column 6: 7d Change
+                change_7d_item = QTableWidgetItem(f"{change_7d:+.2f}%")
+                change_7d_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if change_7d > 0:
+                    change_7d_item.setForeground(QBrush(QColor("#10b981")))
+                elif change_7d < 0:
+                    change_7d_item.setForeground(QBrush(QColor("#ef4444")))
+                self.table.setItem(row, 6, change_7d_item)
 
-            change_item = QTableWidgetItem(f"{coin['change']:+.2f}%")
-            if coin["change"] > 0:
-                change_item.setForeground(QBrush(QColor("#27ae60")))
-            elif coin["change"] < 0:
-                change_item.setForeground(QBrush(QColor("#e74c3c")))
-            self.table.setItem(row, 4, change_item)
+                # Column 7: 24h Volume
+                if volume_24h >= 1e9:
+                    volume_text = f"${volume_24h/1e9:.2f}B"
+                elif volume_24h >= 1e6:
+                    volume_text = f"${volume_24h/1e6:.2f}M"
+                else:
+                    volume_text = f"${volume_24h:,.0f}"
+                volume_item = QTableWidgetItem(volume_text)
+                volume_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row, 7, volume_item)
 
-            mcap = coin["market_cap"]
-            mcap_text = f"${mcap/1e9:.1f}B" if mcap >= 1e9 else f"${mcap/1e6:.1f}M"
-            self.table.setItem(row, 5, QTableWidgetItem(mcap_text))
+                # Column 8: Market Cap
+                if market_cap >= 1e12:
+                    mcap_text = f"${market_cap/1e12:.2f}T"
+                elif market_cap >= 1e9:
+                    mcap_text = f"${market_cap/1e9:.2f}B"
+                elif market_cap >= 1e6:
+                    mcap_text = f"${market_cap/1e6:.2f}M"
+                else:
+                    mcap_text = f"${market_cap:,.0f}"
+                mcap_item = QTableWidgetItem(mcap_text)
+                mcap_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row, 8, mcap_item)
 
-        self.table.resizeColumnsToContents()
+                # Column 9: Circulating Supply
+                if circulating_supply > 0:
+                    if circulating_supply >= 1e9:
+                        supply_text = f"{circulating_supply/1e9:.2f}B {symbol}"
+                    elif circulating_supply >= 1e6:
+                        supply_text = f"{circulating_supply/1e6:.2f}M {symbol}"
+                    else:
+                        supply_text = f"{circulating_supply:,.0f} {symbol}"
+                else:
+                    supply_text = "N/A"
+                supply_item = QTableWidgetItem(supply_text)
+                supply_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(row, 9, supply_item)
+
+            except Exception as e:
+                print(f"Error processing row {row}: {e}")
+                continue
+
+        print(f"✓ Table updated with {self.table.rowCount()} rows")
 
     def filter_coins(self):
+        """Filter coins by search text"""
         search_text = self.search_input.text().lower()
 
         if not search_text:
@@ -410,43 +433,33 @@ class ImprovedMarketTab(QWidget):
             self.table.setRowHidden(row, not show_row)
 
     def toggle_auto_refresh(self):
-        """Toggle auto-refresh on/off"""
+        """Toggle auto-refresh"""
         self.auto_refresh_enabled = not self.auto_refresh_enabled
         
         if self.auto_refresh_enabled:
             self.auto_refresh_btn.setText("▶️ Auto-Refresh: ON")
-            self.auto_refresh_btn.setStyleSheet(
-                """
+            self.auto_refresh_btn.setStyleSheet("""
                 QPushButton {
                     padding: 8px 15px;
-                    background-color: #27ae60;
+                    background-color: #10b981;
                     color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
+                    border-radius: 8px;
+                    font-weight: 700;
                 }
-                QPushButton:hover {
-                    background-color: #229954;
-                }
-            """
-            )
+            """)
             self.refresh_timer.start()
             self.status_label.setText("✅ Auto-refresh enabled (updates every 60s)")
         else:
             self.auto_refresh_btn.setText("⏸️ Auto-Refresh: OFF")
-            self.auto_refresh_btn.setStyleSheet(
-                """
+            self.auto_refresh_btn.setStyleSheet("""
                 QPushButton {
                     padding: 8px 15px;
-                    background-color: #95a5a6;
+                    background-color: #64748b;
                     color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
+                    border-radius: 8px;
+                    font-weight: 700;
                 }
-                QPushButton:hover {
-                    background-color: #7f8c8d;
-                }
-            """
-            )
+            """)
             self.refresh_timer.stop()
             self.status_label.setText("⏸️ Auto-refresh disabled")
 
@@ -840,48 +853,59 @@ class EnhancedPredictionTab(QWidget):
             self.volatility_label.setText(f"Volatility: {abs(change_percent/2):.1f}%")
 
             # Update graph
-            self.update_prediction_graph(current_price, predicted_price, time_frame)
+            historical_prices = result.get("historical_prices", [])
+            self.update_prediction_graph(current_price, predicted_price, time_frame, historical_prices)
 
         except Exception as e:
             self.show_error(f"Error displaying results: {str(e)}")
 
-    def update_prediction_graph(self, current_price, predicted_price, time_frame):
+    def update_prediction_graph(self, current_price, predicted_price, time_frame, historical_prices=None):
         """Update the prediction graph"""
         try:
             self.figure.clear()
             ax = self.figure.add_subplot(111)
 
-            # Create time series data
+            # Determine X-axis label
             if time_frame == 1:
-                periods = 24
                 x_label = "Hours"
             elif time_frame == 7:
-                periods = 7
                 x_label = "Days"
             else:
-                periods = 30
                 x_label = "Days"
 
-            # Generate historical trend (simplified - mock data)
-            x = np.arange(0, periods + 1)
-            
-            # Create a smooth curve from current to predicted
-            historical = np.linspace(current_price * 0.95, current_price, periods)
-            prediction = np.array([predicted_price])
-            
-            # Combine historical and prediction
-            prices = np.concatenate([historical, prediction])
+            # Prepare Data
+            if historical_prices and len(historical_prices) > 1:
+                # Use real historical data
+                historical = np.array(historical_prices)
+                # Ensure we don't have too many points for the view, take last N points based on timeframe logic
+                # For visualization, we just plot what we received (last 60 points from predictor)
 
-            # Plot historical data
-            ax.plot(x[:-1], prices[:-1], 'b-', linewidth=2, label='Historical', alpha=0.7)
-            
-            # Plot prediction
-            ax.plot([x[-2], x[-1]], [prices[-2], prices[-1]], 'r--', 
-                   linewidth=2, label='Prediction', alpha=0.9)
-            
-            # Add prediction point
-            ax.scatter([x[-1]], [prices[-1]], color='red', s=100, zorder=5,
-                      label=f'Predicted: ${predicted_price:,.2f}')
+                # Append prediction
+                prices = np.concatenate([historical, [predicted_price]])
+                x = np.arange(len(prices))
+
+                # Plot historical data (all points except the last one)
+                ax.plot(x[:-1], prices[:-1], 'b-', linewidth=2, label='Historical', alpha=0.7)
+
+                # Plot prediction line (from last historical point to predicted point)
+                ax.plot([x[-2], x[-1]], [prices[-2], prices[-1]], 'r--',
+                       linewidth=2, label='Prediction', alpha=0.9)
+
+                # Add prediction point
+                ax.scatter([x[-1]], [prices[-1]], color='red', s=100, zorder=5,
+                          label=f'Predicted: ${predicted_price:,.2f}')
+
+            else:
+                # Fallback to simplified view if no history available
+                periods = 24 if time_frame == 1 else time_frame
+                x = np.arange(0, periods + 1)
+                historical = np.linspace(current_price * 0.95, current_price, periods)
+                prediction = np.array([predicted_price])
+                prices = np.concatenate([historical, prediction])
+
+                ax.plot(x[:-1], prices[:-1], 'b-', linewidth=2, label='Historical (Est)', alpha=0.5)
+                ax.plot([x[-2], x[-1]], [prices[-2], prices[-1]], 'r--', linewidth=2, label='Prediction', alpha=0.9)
+                ax.scatter([x[-1]], [prices[-1]], color='red', s=100, zorder=5, label=f'Predicted: ${predicted_price:,.2f}')
             
             # Add uncertainty band
             uncertainty = abs(predicted_price - current_price) * 0.1
