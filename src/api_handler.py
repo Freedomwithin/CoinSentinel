@@ -78,23 +78,22 @@ class EnhancedCryptoAPIHandler:
             return None
 
     # ==================== MARKET DATA METHODS ====================
-    def get_coin_history(self, coin_id: str, days: int = 90) -> Optional[pd.DataFrame]:
+    def get_coin_history(self, coin_id: str, days: int = 90):
         """
-        Get historical OHLCV data for a coin
-        
-        Args:
-            coin_id: CoinGecko coin ID
-            days: Number of days of historical data
-            
-        Returns:
-            DataFrame with columns: timestamp, open, high, low, close, volume
+        FIXED version with detailed logging
         """
         try:
-            self._rate_limit()
+            print(f"\\n{'='*60}")
+            print(f"FETCHING HISTORY FOR: {coin_id}")
+            print(f"Days requested: {days}")
+            print(f"{'='*60}")
             
-            print(f"Fetching {days} days of history for {coin_id}")
+            if hasattr(self, '_rate_limit'):
+                self._rate_limit()
+            else:
+                time.sleep(1)
             
-            # Get market chart data (works for any time period)
+            # Get market chart data
             market_chart = self.cg.get_coin_market_chart_by_id(
                 id=coin_id,
                 vs_currency='usd',
@@ -102,17 +101,19 @@ class EnhancedCryptoAPIHandler:
             )
             
             if not market_chart or 'prices' not in market_chart:
-                print("No market chart data available")
+                print("❌ No market chart data received")
                 return None
             
-            # Create DataFrame from prices
+            print(f"✓ Received {len(market_chart['prices'])} price points")
+
+            # Create DataFrame
             prices_df = pd.DataFrame(
                 market_chart['prices'],
                 columns=['timestamp', 'close']
             )
             prices_df['timestamp'] = pd.to_datetime(prices_df['timestamp'], unit='ms')
             
-            # Add volume if available
+            # Add volume
             if 'total_volumes' in market_chart:
                 volumes_df = pd.DataFrame(
                     market_chart['total_volumes'],
@@ -130,8 +131,10 @@ class EnhancedCryptoAPIHandler:
                 df = prices_df
                 df['volume'] = 0
             
-            # Create OHLC approximation from close prices
-            # Use hourly grouping for more granular data
+            print(f"✓ Created base DataFrame with {len(df)} rows")
+
+            # Create OHLC from close prices
+            # Group by hour for more data points
             df['hour'] = df['timestamp'].dt.floor('H')
             
             hourly = df.groupby('hour').agg({
@@ -141,23 +144,18 @@ class EnhancedCryptoAPIHandler:
             }).reset_index()
             
             hourly.columns = ['hour', 'open', 'high', 'low', 'close', 'volume', 'timestamp']
-            hourly = hourly[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+            result = hourly[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
             
-            # Ensure we have enough data
-            if len(hourly) < 30:
-                # If hourly data is insufficient, use the raw close prices
-                df['open'] = df['close'].shift(1).fillna(df['close'])
-                df['high'] = df['close']
-                df['low'] = df['close']
-                result = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
-            else:
-                result = hourly
+            print(f"✓ Created OHLC data with {len(result)} rows")
+            print(f"✓ Columns: {list(result.columns)}")
+            print(f"✓ Date range: {result['timestamp'].min()} to {result['timestamp'].max()}")
+            print(f"✓ Sample close prices: {result['close'].head(3).tolist()}")
+            print(f"{'='*60}\\n")
             
-            print(f"Successfully fetched {len(result)} data points")
             return result
             
         except Exception as e:
-            print(f"Error fetching coin history for {coin_id}: {e}")
+            print(f"❌ ERROR in get_coin_history: {e}")
             import traceback
             traceback.print_exc()
             return None
