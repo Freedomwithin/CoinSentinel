@@ -80,7 +80,3 @@ Thumbs.db
 
 # Electron dev cache
 electron-debug.log
-models/*.joblib
-data/sentiment_cache.json
-__pycache__/
-.venv/

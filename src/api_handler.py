@@ -90,8 +90,14 @@ class EnhancedCryptoAPIHandler:
             DataFrame with columns: timestamp, open, high, low, close, volume
         """
         try:
+            # Force delay to prevent throttling on heavy history calls
+            time.sleep(1.5)
             self._rate_limit()
             
+            # Ensure days is sufficient for ML
+            if days < 90:
+                days = 90
+
             print(f"Fetching {days} days of history for {coin_id}")
             
             # Get market chart data (works for any time period)

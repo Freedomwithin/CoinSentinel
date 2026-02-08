@@ -73,13 +73,30 @@ class AdvancedPricePredictor:
                 df["bb_width"] = df["close"] * 0.2
         else:
             # Simple alternatives without ta library
-            df["rsi"] = 50  # Neutral RSI
-            df["macd"] = 0
-            df["macd_signal"] = 0
-            df["macd_diff"] = 0
-            df["bb_upper"] = df["close"] * 1.1
-            df["bb_lower"] = df["close"] * 0.9
-            df["bb_width"] = df["close"] * 0.2
+            # Manual RSI Calculation
+            delta = df["close"].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / (loss + 1e-10)
+            df["rsi"] = 100 - (100 / (1 + rs))
+            df["rsi"] = df["rsi"].fillna(50)
+
+            # Manual MACD
+            exp1 = df["close"].ewm(span=12, adjust=False).mean()
+            exp2 = df["close"].ewm(span=26, adjust=False).mean()
+            df["macd"] = exp1 - exp2
+            df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
+            df["macd_diff"] = df["macd"] - df["macd_signal"]
+
+            # Manual BB
+            sma20 = df["close"].rolling(window=20).mean()
+            std20 = df["close"].rolling(window=20).std()
+            df["bb_upper"] = sma20 + (std20 * 2)
+            df["bb_lower"] = sma20 - (std20 * 2)
+            df["bb_width"] = df["bb_upper"] - df["bb_lower"]
+
+            # Fill NaNs
+            df = df.fillna(0)
 
         df["volatility"] = df["close"].rolling(window=20, min_periods=1).std()
 
@@ -103,6 +120,7 @@ class AdvancedPricePredictor:
         df["roc_14"] = ((df["close"] - df["close"].shift(14)) / (df["close"].shift(14) + 0.0001)) * 100
 
         # Target: future price change (next period)
+        # Using percentage change as target
         df["target"] = ((df["close"].shift(-1) - df["close"]) / (df["close"] + 0.0001)) * 100
 
         # Drop NaN values
