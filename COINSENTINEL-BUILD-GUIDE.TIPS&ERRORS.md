@@ -118,3 +118,16 @@ npm run dist:win
 ❌ Dev workflow (3 terminals) ≠ Production (1 EXE)
 ✅ Use public APIs for production (CoinGecko free tier)
 ❌ PowerShell ≠ CMD syntax (rmdir /s /q vs Remove-Item)
+
+## LINUX ENVIRONMENT SETUP
+
+### Graphics Acceleration (Critical for UI responsiveness)
+If the application UI feels sluggish or unresponsive on Linux, ensure hardware acceleration is enabled.
+Install the necessary drivers:
+
+```bash
+# Debian/Ubuntu/Linux Mint
+sudo apt-get install libgl1-mesa-dri
+```
+
+This ensures the PyQt5 application uses GPU acceleration instead of software rendering.

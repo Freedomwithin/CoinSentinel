@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
 )
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QBrush, QColor, QFont, QPalette, QPixmap
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -52,6 +52,24 @@ from improved_sentiment_tracker import SentimentTracker
 
 
 # ==================== HELPER CLASSES ====================
+class MarketWorker(QObject):
+    """Specific worker for market data using QObject pattern"""
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(self, api_handler, limit, currency):
+        super().__init__()
+        self.api = api_handler
+        self.limit = limit
+        self.currency = currency
+
+    def run(self):
+        try:
+            coins = self.api.get_top_coins(limit=self.limit, vs_currency=self.currency)
+            self.finished.emit(coins)
+        except Exception as e:
+            self.error.emit(str(e))
+
 class Worker(QThread):
     """Generic worker thread for offloading tasks"""
     finished = pyqtSignal(object)
@@ -287,11 +305,17 @@ class ImprovedMarketTab(QWidget):
 
         print(f"Fetching {limit} coins in {currency}...")
 
-        # Offload API call to worker
-        self.worker = Worker(self.api.get_top_coins, limit=limit, vs_currency=currency)
+        # Use QObject worker pattern
+        self.thread = QThread()
+        self.worker = MarketWorker(self.api, limit=limit, currency=currency)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.on_coins_loaded)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
         self.worker.error.connect(self.on_coins_error)
-        self.worker.start()
+        self.thread.start()
 
     def on_coins_loaded(self, coins):
         """Handle loaded coins data"""
