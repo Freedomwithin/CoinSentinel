@@ -460,3 +460,27 @@ if __name__ == "__main__":
     # Drawdown
     max_dd, dd_series = calculate_drawdown(sample_prices)
     print(f"Maximum Drawdown: {max_dd:.2f}%")
+def validate_solana_address(address: str) -> bool:
+    """
+    Validate a Solana wallet address.
+
+    Args:
+        address: Wallet address string
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not address or not isinstance(address, str):
+        return False
+
+    # Check length (Solana addresses are typically 32-44 characters)
+    if len(address) < 32 or len(address) > 44:
+        return False
+
+    # Check for base58 characters (alphanumeric except 0, O, I, l)
+    import re
+    base58_pattern = r'^[1-9A-HJ-NP-Za-km-z]+$'
+    if not re.match(base58_pattern, address):
+        return False
+
+    return True

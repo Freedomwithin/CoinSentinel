@@ -156,7 +156,13 @@ class ImprovedMarketTab(QWidget):
         self.refresh_timer.setInterval(60000)  # 60 seconds
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content_widget = QWidget()
+        scroll.setWidget(content_widget)
+
+        layout = QVBoxLayout(content_widget)
 
         # Title
         title_label = QLabel("📊 Market Overview - Cryptocurrency Dashboard")
@@ -252,7 +258,10 @@ class ImprovedMarketTab(QWidget):
 
         layout.addWidget(self.table)
 
-        self.setLayout(layout)
+        # Set main layout
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(scroll)
+        self.setLayout(outer_layout)
 
     def load_coins(self):
         try:
@@ -457,7 +466,13 @@ class EnhancedPredictionTab(QWidget):
 
     def init_ui(self):
         """Initialize the user interface"""
-        main_layout = QVBoxLayout()
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content_widget = QWidget()
+        scroll.setWidget(content_widget)
+
+        main_layout = QVBoxLayout(content_widget)
 
         # Title
         title_label = QLabel("🔮 AI Price Predictions")
@@ -477,7 +492,7 @@ class EnhancedPredictionTab(QWidget):
         # Time frame selection
         controls_layout.addWidget(QLabel("Time Frame:"))
         self.time_frame_combo = QComboBox()
-        self.time_frame_combo.addItems(["24 Hours", "7 Days", "30 Days"])
+        self.time_frame_combo.addItems(["24 Hours", "3 Days", "7 Days", "30 Days"])
         controls_layout.addWidget(self.time_frame_combo)
 
         # Prediction button
@@ -655,7 +670,10 @@ class EnhancedPredictionTab(QWidget):
 
         main_layout.addWidget(splitter)
 
-        self.setLayout(main_layout)
+        # Set main layout
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(scroll)
+        self.setLayout(outer_layout)
 
         # Load coins for selection
         self.load_coins()
@@ -717,9 +735,14 @@ class EnhancedPredictionTab(QWidget):
 
             # Get time frame
             time_frame = self.time_frame_combo.currentText()
-            days = (
-                1 if time_frame == "24 Hours" else 7 if time_frame == "7 Days" else 30
-            )
+            if time_frame == "24 Hours":
+                days = 1
+            elif time_frame == "3 Days":
+                days = 3
+            elif time_frame == "7 Days":
+                days = 7
+            else:
+                days = 30
 
             # Start prediction worker
             self.worker = PredictionWorker(self.predictor, coin_id, current_price, days)
@@ -939,7 +962,13 @@ class EnhancedPortfolioTab(QWidget):
 
     def _setup_ui(self):
         """Setup the user interface for the portfolio tab"""
-        main_layout = QVBoxLayout(self)
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content_widget = QWidget()
+        scroll.setWidget(content_widget)
+
+        main_layout = QVBoxLayout(content_widget)
 
         # Title
         title_label = QLabel("💼 Portfolio Management")
@@ -1083,6 +1112,10 @@ class EnhancedPortfolioTab(QWidget):
         """
         )
         main_layout.addWidget(self.table)
+
+        # Set main layout
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(scroll)
 
         # Connections
         self.add_btn.clicked.connect(self._open_add_dialog)
@@ -1299,7 +1332,13 @@ class EnhancedSentimentTab(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content_widget = QWidget()
+        scroll.setWidget(content_widget)
+
+        layout = QVBoxLayout(content_widget)
 
         # Title
         title_label = QLabel("📊 Market Sentiment Analysis")
@@ -1433,7 +1472,11 @@ class EnhancedSentimentTab(QWidget):
         layout.addWidget(coin_group)
 
         layout.addStretch()
-        self.setLayout(layout)
+
+        # Set main layout
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(scroll)
+        self.setLayout(outer_layout)
         
         self.load_coins()
         QTimer.singleShot(500, self.refresh_sentiment)
