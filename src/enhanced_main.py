@@ -52,6 +52,25 @@ from improved_sentiment_tracker import SentimentTracker
 
 
 # ==================== HELPER CLASSES ====================
+class Worker(QThread):
+    """Generic worker thread for offloading tasks"""
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(self, func, *args, **kwargs):
+        super().__init__()
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        try:
+            result = self.func(*self.args, **self.kwargs)
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class PredictionWorker(QThread):
     prediction_complete = pyqtSignal(dict)
     progress_update = pyqtSignal(int, str)
@@ -67,10 +86,10 @@ class PredictionWorker(QThread):
     def run(self):
         try:
             self.progress_update.emit(25, "Fetching historical data...")
-            time.sleep(0.5)
+            time.sleep(0.1)  # Reduced sleep
 
             self.progress_update.emit(50, "Processing technical indicators...")
-            time.sleep(0.5)
+            time.sleep(0.1)  # Reduced sleep
 
             self.progress_update.emit(75, "Running ML models...")
             result = self.predictor.predict_price(
@@ -259,19 +278,24 @@ class ImprovedMarketTab(QWidget):
 
     def load_coins(self):
         """Load coins with FULL data - not fallback"""
+        self.refresh_btn.setEnabled(False)
+        self.refresh_btn.setText("Loading...")
+        self.status_label.setText("⏳ Fetching live data from CoinGecko...")
+
+        limit = int(self.limit_combo.currentText().split()[1])
+        currency = self.currency_combo.currentText().lower()
+
+        print(f"Fetching {limit} coins in {currency}...")
+
+        # Offload API call to worker
+        self.worker = Worker(self.api.get_top_coins, limit=limit, vs_currency=currency)
+        self.worker.finished.connect(self.on_coins_loaded)
+        self.worker.error.connect(self.on_coins_error)
+        self.worker.start()
+
+    def on_coins_loaded(self, coins):
+        """Handle loaded coins data"""
         try:
-            self.refresh_btn.setEnabled(False)
-            self.refresh_btn.setText("Loading...")
-            self.status_label.setText("⏳ Fetching live data from CoinGecko...")
-
-            limit = int(self.limit_combo.currentText().split()[1])
-            currency = self.currency_combo.currentText().lower()
-
-            print(f"Fetching {limit} coins in {currency}...")
-
-            # Get full market data
-            coins = self.api.get_top_coins(limit=limit, vs_currency=currency)
-
             if coins and len(coins) > 0:
                 print(f"✓ Received {len(coins)} coins with data")
                 self.coins_data = coins
@@ -280,15 +304,18 @@ class ImprovedMarketTab(QWidget):
             else:
                 print("✗ No data received from API")
                 self.status_label.setText("⚠️ No data returned from API - Check connection")
-
         except Exception as e:
-            print(f"Error loading coins: {e}")
-            import traceback
-            traceback.print_exc()
-            self.status_label.setText(f"⚠️ Error: {str(e)[:100]}")
+            self.on_coins_error(str(e))
         finally:
             self.refresh_btn.setText("🔄 Refresh Data")
             self.refresh_btn.setEnabled(True)
+
+    def on_coins_error(self, error_msg):
+        """Handle coin loading error"""
+        print(f"Error loading coins: {error_msg}")
+        self.status_label.setText(f"⚠️ Error: {error_msg[:100]}")
+        self.refresh_btn.setText("🔄 Refresh Data")
+        self.refresh_btn.setEnabled(True)
 
     def update_table_with_full_data(self):
         """Update table with ALL columns - no fallback"""
@@ -693,16 +720,20 @@ class EnhancedPredictionTab(QWidget):
 
     def load_coins(self):
         """Load available coins into the combo box"""
+        self.coin_load_worker = Worker(self.api.get_top_coins, limit=50, vs_currency="usd")
+        self.coin_load_worker.finished.connect(self.on_coins_loaded)
+        self.coin_load_worker.start()
+
+    def on_coins_loaded(self, coins):
+        """Handle loaded coins"""
         try:
             self.coin_combo.clear()
-            coins = self.api.get_top_coins(limit=50, vs_currency="usd")
             for coin in coins:
                 self.coin_combo.addItem(
                     f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
                 )
         except Exception as e:
             print(f"Error loading coins: {e}")
-            QMessageBox.warning(self, "Error", f"Failed to load coins: {e}")
 
     def run_prediction(self):
         """Run the price prediction"""
@@ -711,29 +742,94 @@ class EnhancedPredictionTab(QWidget):
             QMessageBox.warning(self, "Warning", "Please select a coin first.")
             return
 
+        self.current_coin_id = coin_id
+        self.predict_btn.setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(True)
+
+        # Offload initial data fetch to worker
+        self.fetch_worker = Worker(self.fetch_coin_data, coin_id)
+        self.fetch_worker.finished.connect(self.on_coin_data_fetched)
+        self.fetch_worker.error.connect(self.show_error)
+        self.fetch_worker.start()
+
+    def fetch_coin_data(self, coin_id):
+        """Fetch latest coin data for prediction"""
+        # Get current price and additional info
+        # We fetch only necessary data to be faster
+        return self.api.get_coin_info(coin_id)
+
+    def on_coin_data_fetched(self, coin_data):
+        """Handle fetched coin data and start prediction"""
         try:
-            self.current_coin_id = coin_id
+            # Coin info returns basic info, might not have current price if simple cache
+            # So we might need to fallback to get_price if needed, but get_coin_info usually has market data
             
-            # Get current price and additional info
-            coins = self.api.get_top_coins(limit=50, vs_currency="usd")
-            current_price = 0
-            market_cap = 0
-            volume_24h = 0
+            # Check if we have price data in the response structure from api_handler.get_coin_info
+            # It returns: {'id': ..., 'name': ..., 'symbol': ..., 'market_cap_rank': ...}
+            # This doesn't include price. We need to fetch price separately or use get_top_coins/get_price
             
-            for coin in coins:
-                if coin["id"] == coin_id:
-                    current_price = coin.get("current_price", 0)
-                    market_cap = coin.get("market_cap", 0)
-                    volume_24h = coin.get("total_volume", 0)
-                    break
+            # Let's start a second quick worker for price if needed, or better, change fetch_coin_data
+            # to fetch everything.
+
+            # RE-IMPLEMENTING fetch_coin_data logic here for clarity as I can't easily edit the worker function post-definition
+            # But wait, I can just launch the next step.
+
+            # Actually, the previous logic used get_top_coins(limit=50). That's heavy.
+            # Let's use get_price for the specific coin.
+            pass
+        except Exception as e:
+            self.show_error(str(e))
+
+    # Redefining run_prediction to use a single worker flow
+    def run_prediction(self):
+        """Run the price prediction"""
+        coin_id = self.coin_combo.currentData()
+        if not coin_id:
+            QMessageBox.warning(self, "Warning", "Please select a coin first.")
+            return
+
+        self.current_coin_id = coin_id
+        self.predict_btn.setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(True)
+        self.current_price_label.setText("Fetching data...")
+
+        # Offload data fetch
+        self.fetch_worker = Worker(self.prepare_prediction_data, coin_id)
+        self.fetch_worker.finished.connect(self.start_prediction_worker)
+        self.fetch_worker.error.connect(self.show_error)
+        self.fetch_worker.start()
+
+    def prepare_prediction_data(self, coin_id):
+        """Fetch necessary data for prediction setup"""
+        # Fetch specific coin price data directly instead of top 50
+        price_data = self.api.get_price([coin_id], vs_currency="usd")
+        # Also fetch info for market cap etc
+        coin_info = self.api.get_coin_info(coin_id) # This is cached
+
+        return {
+            "price_data": price_data,
+            "coin_info": coin_info
+        }
+
+    def start_prediction_worker(self, data):
+        """Start the actual prediction thread"""
+        try:
+            coin_id = self.current_coin_id
+            price_data = data["price_data"]
+
+            if coin_id not in price_data:
+                raise Exception("Could not get current price")
+
+            current_price = price_data[coin_id].get("usd", 0)
+            market_cap = price_data[coin_id].get("usd_market_cap", 0)
+            volume_24h = price_data[coin_id].get("usd_24h_vol", 0)
 
             if current_price <= 0:
-                QMessageBox.warning(
-                    self, "Warning", "Could not get current price for selected coin."
-                )
-                return
+                raise Exception("Invalid price data")
 
-            # Update current info
+            # Update UI
             self.current_price_label.setText(f"Current Price: ${current_price:,.2f}")
             
             if market_cap >= 1e9:
@@ -764,12 +860,8 @@ class EnhancedPredictionTab(QWidget):
             self.worker.error_occurred.connect(self.show_error)
             self.worker.start()
 
-            self.progress_bar.setValue(0)
-            self.progress_bar.setVisible(True)
-            self.predict_btn.setEnabled(False)
-
         except Exception as e:
-            self.show_error(f"Error: {str(e)}")
+            self.show_error(f"Error starting prediction: {str(e)}")
 
     def update_progress(self, value, message):
         """Update progress bar and status"""
@@ -1153,12 +1245,12 @@ class EnhancedPortfolioTab(QWidget):
 
     def _load_coins_into_dialog(self):
         """Load coins into the AddTransactionDialog"""
-        try:
-            top = self.api.get_top_coins(limit=100, vs_currency=self.currency)
-            self.coin_list = top
-        except Exception as exc:
-            print("Failed to load coin list for dialog:", exc)
-            self.coin_list = []
+        self.coin_list_worker = Worker(self.api.get_top_coins, limit=100, vs_currency=self.currency)
+        self.coin_list_worker.finished.connect(self.on_coin_list_loaded)
+        self.coin_list_worker.start()
+
+    def on_coin_list_loaded(self, coins):
+        self.coin_list = coins
 
     def _open_add_dialog(self):
         """Open the add transaction dialog"""
@@ -1180,100 +1272,129 @@ class EnhancedPortfolioTab(QWidget):
             self.holdings_count_label.setText("0 coins")
             return
 
-        # Get prices
+        # Disable refresh button while loading
+        self.refresh_btn.setEnabled(False)
+        self.refresh_btn.setText("Updating...")
+
+        # Offload API call to worker
         ids = list(holdings.keys())
+        self.worker = Worker(self.fetch_portfolio_data, ids)
+        self.worker.finished.connect(lambda data: self.on_portfolio_data_loaded(data, holdings))
+        self.worker.error.connect(self.on_portfolio_error)
+        self.worker.start()
+
+    def fetch_portfolio_data(self, ids):
+        """Worker function to fetch prices and coin info"""
+        price_data = self.api.get_price(ids, vs_currency=self.currency)
+        coin_infos = {}
+        for coin_id in ids:
+            coin_infos[coin_id] = self.api.get_coin_info(coin_id)
+        return {"price_data": price_data, "coin_infos": coin_infos}
+
+    def on_portfolio_data_loaded(self, data, holdings):
+        """Handle loaded portfolio data"""
         try:
-            price_data = self.api.get_price(ids, vs_currency=self.currency)
+            price_data = data["price_data"]
+            coin_infos = data["coin_infos"]
+            ids = list(holdings.keys())
+
+            # Fill the table
+            self.table.setRowCount(len(ids))
+            total_value = 0.0
+            total_pnl = 0.0
+            total_cost = 0.0
+
+            for row, coin_id in enumerate(ids):
+                try:
+                    coin_info = coin_infos.get(coin_id, {})
+                    name = coin_info.get("name", coin_id)
+                    symbol = coin_info.get("symbol", "").upper()
+
+                    amount = holdings[coin_id]["amount"]
+                    avg_price = holdings[coin_id]["avg_price"]
+                    cur_price = price_data.get(coin_id, {}).get(self.currency, 0.0)
+                    value = amount * cur_price
+                    cost = amount * avg_price
+                    pnl = value - cost
+                    pnl_percent = (pnl / cost * 100) if cost > 0 else 0
+
+                    total_value += value
+                    total_pnl += pnl
+                    total_cost += cost
+
+                    # Populate cells
+                    self.table.setItem(row, 0, QTableWidgetItem(name))
+                    self.table.setItem(row, 1, QTableWidgetItem(symbol))
+                    self.table.setItem(row, 2, QTableWidgetItem(f"{amount:,.8f}"))
+                    self.table.setItem(
+                        row,
+                        3,
+                        QTableWidgetItem(f"{self.get_currency_symbol()}{avg_price:,.2f}"),
+                    )
+                    self.table.setItem(
+                        row,
+                        4,
+                        QTableWidgetItem(f"{self.get_currency_symbol()}{cur_price:,.2f}"),
+                    )
+                    self.table.setItem(
+                        row, 5, QTableWidgetItem(f"{self.get_currency_symbol()}{value:,.2f}")
+                    )
+
+                    # PnL column with color coding
+                    pnl_item = QTableWidgetItem(
+                        f"{self.get_currency_symbol()}{pnl:,.2f} ({pnl_percent:+.1f}%)"
+                    )
+                    if pnl >= 0:
+                        pnl_item.setForeground(QBrush(QColor("#27ae60")))
+                    else:
+                        pnl_item.setForeground(QBrush(QColor("#e74c3c")))
+                    self.table.setItem(row, 6, pnl_item)
+
+                except Exception as e:
+                    print(f"Error processing {coin_id}: {e}")
+                    continue
+
+            # Calculate and display percentages
+            for row in range(self.table.rowCount()):
+                try:
+                    value_text = self.table.item(row, 5).text()
+                    # Remove currency symbol and commas
+                    value_str = value_text.replace(self.get_currency_symbol(), "").replace(",", "")
+                    value = float(value_str)
+                    perc = (value / total_value) * 100 if total_value else 0
+                    perc_item = QTableWidgetItem(f"{perc:,.2f}%")
+                    perc_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.table.setItem(row, 7, perc_item)
+                except Exception as e:
+                    print(f"Error calculating % for row {row}: {e}")
+
+            # Update summary cards
+            currency_symbol = self.get_currency_symbol()
+            self.total_value_label.setText(f"{currency_symbol}{total_value:,.2f}")
+
+            # Update P&L with color
+            total_pnl_percent = (total_pnl / total_cost * 100) if total_cost > 0 else 0
+            pnl_color = "#27ae60" if total_pnl >= 0 else "#e74c3c"
+            self.total_pnl_label.setText(
+                f"{currency_symbol}{total_pnl:,.2f} ({total_pnl_percent:+.1f}%)"
+            )
+            self.total_pnl_label.setStyleSheet(
+                f"font-size: 18px; font-weight: bold; color: {pnl_color};"
+            )
+
+            self.holdings_count_label.setText(f"{len(ids)} coins")
+
         except Exception as e:
-            print(f"Error fetching prices: {e}")
-            QMessageBox.warning(self, "Error", "Could not fetch current prices")
-            return
+            self.on_portfolio_error(str(e))
+        finally:
+            self.refresh_btn.setEnabled(True)
+            self.refresh_btn.setText("🔄 Refresh")
 
-        # Fill the table
-        self.table.setRowCount(len(ids))
-        total_value = 0.0
-        total_pnl = 0.0
-        total_cost = 0.0
-
-        for row, coin_id in enumerate(ids):
-            try:
-                coin_info = self.api.get_coin_info(coin_id)
-                name = coin_info.get("name", coin_id)
-                symbol = coin_info.get("symbol", "").upper()
-
-                amount = holdings[coin_id]["amount"]
-                avg_price = holdings[coin_id]["avg_price"]
-                cur_price = price_data.get(coin_id, {}).get(self.currency, 0.0)
-                value = amount * cur_price
-                cost = amount * avg_price
-                pnl = value - cost
-                pnl_percent = (pnl / cost * 100) if cost > 0 else 0
-                
-                total_value += value
-                total_pnl += pnl
-                total_cost += cost
-
-                # Populate cells
-                self.table.setItem(row, 0, QTableWidgetItem(name))
-                self.table.setItem(row, 1, QTableWidgetItem(symbol))
-                self.table.setItem(row, 2, QTableWidgetItem(f"{amount:,.8f}"))
-                self.table.setItem(
-                    row,
-                    3,
-                    QTableWidgetItem(f"{self.get_currency_symbol()}{avg_price:,.2f}"),
-                )
-                self.table.setItem(
-                    row,
-                    4,
-                    QTableWidgetItem(f"{self.get_currency_symbol()}{cur_price:,.2f}"),
-                )
-                self.table.setItem(
-                    row, 5, QTableWidgetItem(f"{self.get_currency_symbol()}{value:,.2f}")
-                )
-
-                # PnL column with color coding
-                pnl_item = QTableWidgetItem(
-                    f"{self.get_currency_symbol()}{pnl:,.2f} ({pnl_percent:+.1f}%)"
-                )
-                if pnl >= 0:
-                    pnl_item.setForeground(QBrush(QColor("#27ae60")))
-                else:
-                    pnl_item.setForeground(QBrush(QColor("#e74c3c")))
-                self.table.setItem(row, 6, pnl_item)
-
-            except Exception as e:
-                print(f"Error processing {coin_id}: {e}")
-                continue
-
-        # Calculate and display percentages
-        for row in range(self.table.rowCount()):
-            try:
-                value_text = self.table.item(row, 5).text()
-                # Remove currency symbol and commas
-                value_str = value_text.replace(self.get_currency_symbol(), "").replace(",", "")
-                value = float(value_str)
-                perc = (value / total_value) * 100 if total_value else 0
-                perc_item = QTableWidgetItem(f"{perc:,.2f}%")
-                perc_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.table.setItem(row, 7, perc_item)
-            except Exception as e:
-                print(f"Error calculating % for row {row}: {e}")
-
-        # Update summary cards
-        currency_symbol = self.get_currency_symbol()
-        self.total_value_label.setText(f"{currency_symbol}{total_value:,.2f}")
-        
-        # Update P&L with color
-        total_pnl_percent = (total_pnl / total_cost * 100) if total_cost > 0 else 0
-        pnl_color = "#27ae60" if total_pnl >= 0 else "#e74c3c"
-        self.total_pnl_label.setText(
-            f"{currency_symbol}{total_pnl:,.2f} ({total_pnl_percent:+.1f}%)"
-        )
-        self.total_pnl_label.setStyleSheet(
-            f"font-size: 18px; font-weight: bold; color: {pnl_color};"
-        )
-        
-        self.holdings_count_label.setText(f"{len(ids)} coins")
+    def on_portfolio_error(self, error_msg):
+        """Handle portfolio loading error"""
+        print(f"Error loading portfolio: {error_msg}")
+        self.refresh_btn.setEnabled(True)
+        self.refresh_btn.setText("🔄 Refresh")
 
     def get_currency_symbol(self):
         """Get the currency symbol"""
@@ -1287,63 +1408,80 @@ class EnhancedPortfolioTab(QWidget):
 
     def export_to_csv(self):
         """Export portfolio data to CSV"""
-        try:
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "Save Portfolio", "", "CSV Files (*.csv)"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Portfolio", "", "CSV Files (*.csv)"
+        )
+        if not file_path:
+            return
+
+        holdings = self.portfolio.get_holdings()
+        if not holdings:
+            QMessageBox.information(self, "Info", "No data to export")
+            return
+
+        self.export_btn.setEnabled(False)
+        self.export_btn.setText("Exporting...")
+
+        # Offload export logic
+        self.export_worker = Worker(self.perform_export, file_path, holdings)
+        self.export_worker.finished.connect(lambda: self.on_export_finished(file_path))
+        self.export_worker.error.connect(self.on_export_error)
+        self.export_worker.start()
+
+    def perform_export(self, file_path, holdings):
+        """Worker function for export"""
+        ids = list(holdings.keys())
+        price_data = self.api.get_price(ids, vs_currency=self.currency)
+
+        data = []
+        total_value = 0
+
+        for coin_id in ids:
+            coin_info = self.api.get_coin_info(coin_id)
+            name = coin_info.get("name", coin_id)
+            symbol = coin_info.get("symbol", "").upper()
+            amount = holdings[coin_id]["amount"]
+            avg_price = holdings[coin_id]["avg_price"]
+            cur_price = price_data.get(coin_id, {}).get(self.currency, 0.0)
+            value = amount * cur_price
+            cost = amount * avg_price
+            pnl = value - cost
+            total_value += value
+
+            data.append(
+                {
+                    "Coin": name,
+                    "Symbol": symbol,
+                    "Amount": amount,
+                    f"Avg. Price ({self.currency.upper()})": avg_price,
+                    f"Current Price ({self.currency.upper()})": cur_price,
+                    f"Value ({self.currency.upper()})": value,
+                    f"PnL ({self.currency.upper()})": pnl,
+                    "PnL %": (pnl / cost * 100) if cost > 0 else 0,
+                }
             )
-            if not file_path:
-                return
 
-            holdings = self.portfolio.get_holdings()
-            if not holdings:
-                QMessageBox.information(self, "Info", "No data to export")
-                return
+        # Calculate portfolio percentages
+        for item in data:
+            value = item[f"Value ({self.currency.upper()})"]
+            item["% of Portfolio"] = (value / total_value * 100) if total_value > 0 else 0
 
-            ids = list(holdings.keys())
-            price_data = self.api.get_price(ids, vs_currency=self.currency)
+        df = pd.DataFrame(data)
+        df.to_csv(file_path, index=False)
 
-            data = []
-            total_value = 0
-            
-            for coin_id in ids:
-                coin_info = self.api.get_coin_info(coin_id)
-                name = coin_info.get("name", coin_id)
-                symbol = coin_info.get("symbol", "").upper()
-                amount = holdings[coin_id]["amount"]
-                avg_price = holdings[coin_id]["avg_price"]
-                cur_price = price_data.get(coin_id, {}).get(self.currency, 0.0)
-                value = amount * cur_price
-                cost = amount * avg_price
-                pnl = value - cost
-                total_value += value
+    def on_export_finished(self, file_path):
+        """Handle export completion"""
+        self.export_btn.setEnabled(True)
+        self.export_btn.setText("📤 Export to CSV")
+        QMessageBox.information(
+            self, "Success", f"Portfolio exported to {file_path}"
+        )
 
-                data.append(
-                    {
-                        "Coin": name,
-                        "Symbol": symbol,
-                        "Amount": amount,
-                        f"Avg. Price ({self.currency.upper()})": avg_price,
-                        f"Current Price ({self.currency.upper()})": cur_price,
-                        f"Value ({self.currency.upper()})": value,
-                        f"PnL ({self.currency.upper()})": pnl,
-                        "PnL %": (pnl / cost * 100) if cost > 0 else 0,
-                    }
-                )
-
-            # Calculate portfolio percentages
-            for item in data:
-                value = item[f"Value ({self.currency.upper()})"]
-                item["% of Portfolio"] = (value / total_value * 100) if total_value > 0 else 0
-
-            df = pd.DataFrame(data)
-            df.to_csv(file_path, index=False)
-            QMessageBox.information(
-                self, "Success", f"Portfolio exported to {file_path}"
-            )
-
-        except Exception as e:
-            print(f"Error exporting to CSV: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to export: {e}")
+    def on_export_error(self, error_msg):
+        """Handle export error"""
+        self.export_btn.setEnabled(True)
+        self.export_btn.setText("📤 Export to CSV")
+        QMessageBox.critical(self, "Error", f"Failed to export: {error_msg}")
 
 
 class EnhancedSentimentTab(QWidget):
@@ -1506,8 +1644,13 @@ class EnhancedSentimentTab(QWidget):
         QTimer.singleShot(500, self.refresh_sentiment)
 
     def load_coins(self):
+        # Offload to worker
+        self.coin_load_worker = Worker(self.api.get_top_coins, limit=20, vs_currency="usd")
+        self.coin_load_worker.finished.connect(self.on_coins_loaded)
+        self.coin_load_worker.start()
+
+    def on_coins_loaded(self, coins):
         try:
-            coins = self.api.get_top_coins(limit=20, vs_currency="usd")
             for coin in coins:
                 self.coin_combo.addItem(
                     f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
@@ -1517,9 +1660,22 @@ class EnhancedSentimentTab(QWidget):
 
     def refresh_sentiment(self):
         """Fetch and display Fear & Greed Index and market analysis"""
+        # Offload to worker
+        self.worker = Worker(self.fetch_sentiment_data)
+        self.worker.finished.connect(self.on_sentiment_loaded)
+        self.worker.error.connect(self.on_sentiment_error)
+        self.worker.start()
+
+    def fetch_sentiment_data(self):
+        """Worker function to fetch sentiment data"""
+        fgi = self.sentiment_tracker.get_fear_greed_index()
+        market_data = self.sentiment_tracker.get_market_sentiment()
+        return {"fgi": fgi, "market_data": market_data}
+
+    def on_sentiment_loaded(self, data):
+        """Handle loaded sentiment data"""
         try:
-            # Fear & Greed Index
-            fgi = self.sentiment_tracker.get_fear_greed_index()
+            fgi = data.get("fgi")
             if fgi:
                 value = fgi['value']
                 classification = fgi['classification']
@@ -1552,7 +1708,7 @@ class EnhancedSentimentTab(QWidget):
                 self.fgi_description_label.setText(description)
 
             # Market analysis
-            market_data = self.sentiment_tracker.get_market_sentiment()
+            market_data = data.get("market_data", {})
             analysis = market_data.get("market_analysis", {})
             
             sentiment = analysis.get('market_sentiment', 'Neutral')
@@ -1579,9 +1735,13 @@ class EnhancedSentimentTab(QWidget):
             self.extreme_losers_label.setText(str(analysis.get('extreme_losers', 0)))
             
         except Exception as e:
-            print(f"Error refreshing sentiment: {e}")
-            self.fgi_value_label.setText("Error")
-            self.market_sentiment_label.setText("Error loading data")
+            self.on_sentiment_error(str(e))
+
+    def on_sentiment_error(self, error_msg):
+        """Handle sentiment error"""
+        print(f"Error refreshing sentiment: {error_msg}")
+        self.fgi_value_label.setText("Error")
+        self.market_sentiment_label.setText("Error loading data")
 
     def analyze_coin_sentiment(self):
         """Fetch and display sentiment for the selected coin"""
@@ -1590,12 +1750,21 @@ class EnhancedSentimentTab(QWidget):
             self.coin_sentiment_text.setPlainText("Please select a coin first.")
             return
 
+        self.analyze_btn.setEnabled(False)
+        self.coin_sentiment_text.setPlainText("Analyzing...")
+
+        # Offload to worker
+        self.analyze_worker = Worker(self.sentiment_tracker.get_coin_sentiment, coin_id)
+        self.analyze_worker.finished.connect(lambda res: self.on_coin_sentiment_loaded(res, self.coin_combo.currentText()))
+        self.analyze_worker.error.connect(self.on_coin_sentiment_error)
+        self.analyze_worker.start()
+
+    def on_coin_sentiment_loaded(self, sentiment, coin_name):
+        """Handle loaded coin sentiment"""
         try:
-            sentiment = self.sentiment_tracker.get_coin_sentiment(coin_id)
-            
             html = f"""
             <div style='padding: 10px;'>
-                <h3 style='margin: 5px 0;'>{self.coin_combo.currentText()}</h3>
+                <h3 style='margin: 5px 0;'>{coin_name}</h3>
                 <p style='margin: 5px 0;'>
                     <span style='color: #27ae60; font-weight: bold;'>Positive: {sentiment['positive']:.1f}%</span> | 
                     <span style='color: #e74c3c; font-weight: bold;'>Negative: {sentiment['negative']:.1f}%</span> | 
@@ -1604,9 +1773,15 @@ class EnhancedSentimentTab(QWidget):
             </div>
             """
             self.coin_sentiment_text.setHtml(html)
-            
         except Exception as e:
-            self.coin_sentiment_text.setPlainText(f"Error analyzing sentiment: {str(e)}")
+            self.on_coin_sentiment_error(str(e))
+        finally:
+            self.analyze_btn.setEnabled(True)
+
+    def on_coin_sentiment_error(self, error_msg):
+        """Handle coin sentiment error"""
+        self.coin_sentiment_text.setPlainText(f"Error analyzing sentiment: {error_msg}")
+        self.analyze_btn.setEnabled(True)
 
 
 # ==================== MAIN WINDOW ====================
