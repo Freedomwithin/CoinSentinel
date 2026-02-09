@@ -499,9 +499,7 @@ class EnhancedPredictionTab(QWidget):
 
         # Title
         title_label = QLabel("🔮 AI Price Predictions")
-        title_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin: 10px; color: #2c3e50;"
-        )
+        title_label.setObjectName("sectionTitle")
         main_layout.addWidget(title_label)
 
         # Controls
@@ -524,48 +522,19 @@ class EnhancedPredictionTab(QWidget):
 
         # Prediction button
         self.predict_btn = QPushButton("🔮 Predict Price")
+        self.predict_btn.setObjectName("predictButton")
         self.predict_btn.setToolTip("Generate AI-powered price prediction based on historical data")
         self.predict_btn.setAccessibleName("Predict Price Button")
         self.predict_btn.clicked.connect(self.run_prediction)
-        self.predict_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #9b59b6;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #8e44ad;
-            }
-        """
-        )
         controls_layout.addWidget(self.predict_btn)
         
         # Export prediction button
         self.export_pred_btn = QPushButton("💾 Save Prediction")
+        self.export_pred_btn.setObjectName("actionButton")
         self.export_pred_btn.setToolTip("Run a prediction first to enable export")
         self.export_pred_btn.setAccessibleName("Export Prediction Button")
         self.export_pred_btn.clicked.connect(self.export_prediction)
         self.export_pred_btn.setEnabled(False)
-        self.export_pred_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #34495e;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2c3e50;
-            }
-            QPushButton:disabled {
-                background-color: #95a5a6;
-            }
-        """
-        )
         controls_layout.addWidget(self.export_pred_btn)
 
         controls_layout.addStretch()
@@ -589,17 +558,15 @@ class EnhancedPredictionTab(QWidget):
         current_info_layout = QVBoxLayout()
         
         self.current_price_label = QLabel("Current Price: -")
-        self.current_price_label.setStyleSheet(
-            "font-size: 16px; margin: 5px; color: #2c3e50; font-weight: bold;"
-        )
+        self.current_price_label.setObjectName("infoLabelLarge")
         current_info_layout.addWidget(self.current_price_label)
         
         self.market_cap_label = QLabel("Market Cap: -")
-        self.market_cap_label.setStyleSheet("font-size: 12px; margin: 5px; color: #7f8c8d;")
+        self.market_cap_label.setObjectName("infoLabel")
         current_info_layout.addWidget(self.market_cap_label)
         
         self.volume_label = QLabel("24h Volume: -")
-        self.volume_label.setStyleSheet("font-size: 12px; margin: 5px; color: #7f8c8d;")
+        self.volume_label.setObjectName("infoLabel")
         current_info_layout.addWidget(self.volume_label)
         
         current_info_group.setLayout(current_info_layout)
@@ -611,33 +578,27 @@ class EnhancedPredictionTab(QWidget):
 
         # Predicted price
         self.predicted_price_label = QLabel("Predicted Price: -")
-        self.predicted_price_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin: 5px; color: #2c3e50;"
-        )
+        self.predicted_price_label.setObjectName("predictionResultLabel")
         prediction_layout.addWidget(self.predicted_price_label)
 
         # Change percentage
         self.change_label = QLabel("Change: -")
-        self.change_label.setStyleSheet("font-size: 14px; margin: 5px; color: #2c3e50;")
+        self.change_label.setObjectName("predictionMetaLabel")
         prediction_layout.addWidget(self.change_label)
 
         # Price range
         self.price_range_label = QLabel("Expected Range: -")
-        self.price_range_label.setStyleSheet("font-size: 12px; margin: 5px; color: #7f8c8d;")
+        self.price_range_label.setObjectName("infoLabel")
         prediction_layout.addWidget(self.price_range_label)
 
         # Confidence score
         self.confidence_label = QLabel("Confidence: -")
-        self.confidence_label.setStyleSheet(
-            "font-size: 14px; margin: 5px; color: #2c3e50;"
-        )
+        self.confidence_label.setObjectName("predictionMetaLabel")
         prediction_layout.addWidget(self.confidence_label)
 
         # Direction indicator
         self.direction_label = QLabel("Direction: -")
-        self.direction_label.setStyleSheet(
-            "font-size: 14px; margin: 5px; color: #2c3e50;"
-        )
+        self.direction_label.setObjectName("predictionMetaLabel")
         prediction_layout.addWidget(self.direction_label)
 
         self.results_group.setLayout(prediction_layout)
@@ -649,15 +610,15 @@ class EnhancedPredictionTab(QWidget):
         technical_layout = QVBoxLayout()
         
         self.rsi_label = QLabel("RSI: -")
-        self.rsi_label.setStyleSheet("font-size: 12px; margin: 3px; color: #2c3e50;")
+        self.rsi_label.setObjectName("technicalLabel")
         technical_layout.addWidget(self.rsi_label)
         
         self.macd_label = QLabel("MACD: -")
-        self.macd_label.setStyleSheet("font-size: 12px; margin: 3px; color: #2c3e50;")
+        self.macd_label.setObjectName("technicalLabel")
         technical_layout.addWidget(self.macd_label)
         
         self.volatility_label = QLabel("Volatility: -")
-        self.volatility_label.setStyleSheet("font-size: 12px; margin: 3px; color: #2c3e50;")
+        self.volatility_label.setObjectName("technicalLabel")
         technical_layout.addWidget(self.volatility_label)
         
         self.technical_group.setLayout(technical_layout)
@@ -671,9 +632,6 @@ class EnhancedPredictionTab(QWidget):
         self.insights_text = QTextEdit()
         self.insights_text.setReadOnly(True)
         self.insights_text.setMaximumHeight(150)
-        self.insights_text.setStyleSheet(
-            "font-size: 12px; background-color: #f8f9fa; border: 1px solid #dee2e6;"
-        )
         insights_layout.addWidget(self.insights_text)
         
         self.insights_group.setLayout(insights_layout)
@@ -881,7 +839,12 @@ class EnhancedPredictionTab(QWidget):
         """Update the prediction graph"""
         try:
             self.figure.clear()
+            # Set dark background for figure
+            self.figure.patch.set_facecolor('#0F1724')
+
             ax = self.figure.add_subplot(111)
+            # Set dark background for axes
+            ax.set_facecolor('#0F1724')
 
             # Create time series data
             if time_frame == 1:
@@ -905,14 +868,14 @@ class EnhancedPredictionTab(QWidget):
             prices = np.concatenate([historical, prediction])
 
             # Plot historical data
-            ax.plot(x[:-1], prices[:-1], 'b-', linewidth=2, label='Historical', alpha=0.7)
+            ax.plot(x[:-1], prices[:-1], color='#1199FA', linewidth=2, label='Historical', alpha=0.8)
             
             # Plot prediction
-            ax.plot([x[-2], x[-1]], [prices[-2], prices[-1]], 'r--', 
+            ax.plot([x[-2], x[-1]], [prices[-2], prices[-1]], color='#EF4444', linestyle='--',
                    linewidth=2, label='Prediction', alpha=0.9)
             
             # Add prediction point
-            ax.scatter([x[-1]], [prices[-1]], color='red', s=100, zorder=5,
+            ax.scatter([x[-1]], [prices[-1]], color='#EF4444', s=100, zorder=5,
                       label=f'Predicted: ${predicted_price:,.2f}')
             
             # Add uncertainty band
@@ -925,12 +888,24 @@ class EnhancedPredictionTab(QWidget):
             )
 
             # Formatting
-            ax.set_xlabel(x_label, fontsize=10)
-            ax.set_ylabel('Price (USD)', fontsize=10)
+            ax.set_xlabel(x_label, fontsize=10, color='#94A3B8')
+            ax.set_ylabel('Price (USD)', fontsize=10, color='#94A3B8')
             ax.set_title(f'{self.coin_combo.currentText()} - Price Prediction', 
-                        fontsize=12, fontweight='bold')
-            ax.legend(loc='best', fontsize=8)
-            ax.grid(True, alpha=0.3)
+                        fontsize=12, fontweight='bold', color='white')
+
+            # Customize ticks
+            ax.tick_params(axis='x', colors='#94A3B8')
+            ax.tick_params(axis='y', colors='#94A3B8')
+
+            # Customize spines
+            for spine in ax.spines.values():
+                spine.set_color('#1E293B')
+
+            # Customize legend
+            legend = ax.legend(loc='best', fontsize=8, facecolor='#1E293B', edgecolor='#334155')
+            plt.setp(legend.get_texts(), color='#E0E6ED')
+
+            ax.grid(True, alpha=0.1, color='#FFFFFF', linestyle='--')
             
             # Format y-axis as currency
             ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'${y:,.0f}'))
@@ -1004,66 +979,25 @@ class EnhancedPortfolioTab(QWidget):
 
         # Title
         title_label = QLabel("💼 Portfolio Management")
-        title_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin: 10px; color: #2c3e50;"
-        )
+        title_label.setObjectName("sectionTitle")
         main_layout.addWidget(title_label)
 
         # Top bar with buttons and currency selection
         top_bar = QHBoxLayout()
         self.add_btn = QPushButton("➕ Add Transaction")
+        self.add_btn.setObjectName("actionButton")
         self.add_btn.setToolTip("Record a new buy or sell transaction")
         self.add_btn.setAccessibleName("Add Transaction Button")
-        self.add_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #27ae60;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #229954;
-            }
-        """
-        )
         
         self.refresh_btn = QPushButton("🔄 Refresh")
+        self.refresh_btn.setObjectName("actionButton")
         self.refresh_btn.setToolTip("Update current prices and portfolio value")
         self.refresh_btn.setAccessibleName("Refresh Portfolio Button")
-        self.refresh_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #3498db;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """
-        )
         
         self.export_btn = QPushButton("📤 Export to CSV")
+        self.export_btn.setObjectName("actionButton")
         self.export_btn.setToolTip("Download portfolio data as CSV")
         self.export_btn.setAccessibleName("Export Portfolio Button")
-        self.export_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #95a5a6;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
-        """
-        )
 
         # Currency Combo Box
         self.currency_combo = QComboBox()
@@ -1085,9 +1019,7 @@ class EnhancedPortfolioTab(QWidget):
         total_card = QGroupBox("Total Portfolio Value")
         total_layout = QVBoxLayout()
         self.total_value_label = QLabel("$0.00")
-        self.total_value_label.setStyleSheet(
-            "font-size: 24px; font-weight: bold; color: #2c3e50;"
-        )
+        self.total_value_label.setObjectName("totalValueLabel")
         total_layout.addWidget(self.total_value_label)
         total_card.setLayout(total_layout)
         summary_layout.addWidget(total_card)
@@ -1096,9 +1028,7 @@ class EnhancedPortfolioTab(QWidget):
         pnl_card = QGroupBox("Total Profit/Loss")
         pnl_layout = QVBoxLayout()
         self.total_pnl_label = QLabel("$0.00 (0.00%)")
-        self.total_pnl_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold;"
-        )
+        self.total_pnl_label.setObjectName("totalPnlLabel")
         pnl_layout.addWidget(self.total_pnl_label)
         pnl_card.setLayout(pnl_layout)
         summary_layout.addWidget(pnl_card)
@@ -1107,9 +1037,7 @@ class EnhancedPortfolioTab(QWidget):
         holdings_card = QGroupBox("Holdings")
         holdings_layout = QVBoxLayout()
         self.holdings_count_label = QLabel("0 coins")
-        self.holdings_count_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; color: #2c3e50;"
-        )
+        self.holdings_count_label.setObjectName("holdingsCountLabel")
         holdings_layout.addWidget(self.holdings_count_label)
         holdings_card.setLayout(holdings_layout)
         summary_layout.addWidget(holdings_card)
@@ -1134,21 +1062,6 @@ class EnhancedPortfolioTab(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: white;
-                alternate-background-color: #f8f9fa;
-            }
-            QHeaderView::section {
-                background-color: #34495e;
-                color: white;
-                padding: 8px;
-                font-weight: bold;
-                border: none;
-            }
-        """
-        )
         main_layout.addWidget(self.table)
 
         # Set main layout
@@ -1380,30 +1293,15 @@ class EnhancedSentimentTab(QWidget):
 
         # Title
         title_label = QLabel("📊 Market Sentiment Analysis")
-        title_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin: 10px; color: #2c3e50;"
-        )
+        title_label.setObjectName("sectionTitle")
         layout.addWidget(title_label)
 
         # Refresh button
         refresh_btn = QPushButton("🔄 Refresh Sentiment Data")
+        refresh_btn.setObjectName("actionButton")
         refresh_btn.setToolTip("Update market sentiment data from Alternative.me and CoinGecko")
         refresh_btn.setAccessibleName("Refresh Sentiment Button")
         refresh_btn.clicked.connect(self.refresh_sentiment)
-        refresh_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #3498db;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """
-        )
         layout.addWidget(refresh_btn)
 
         # Fear & Greed Index Group
@@ -1411,23 +1309,17 @@ class EnhancedSentimentTab(QWidget):
         fgi_layout = QVBoxLayout()
         
         self.fgi_value_label = QLabel("Loading...")
-        self.fgi_value_label.setStyleSheet(
-            "font-size: 48px; font-weight: bold; margin: 10px;"
-        )
+        self.fgi_value_label.setObjectName("fgiValue")
         self.fgi_value_label.setAlignment(Qt.AlignCenter)
         fgi_layout.addWidget(self.fgi_value_label)
         
         self.fgi_classification_label = QLabel("...")
-        self.fgi_classification_label.setStyleSheet(
-            "font-size: 18px; margin: 5px;"
-        )
+        self.fgi_classification_label.setObjectName("fgiClass")
         self.fgi_classification_label.setAlignment(Qt.AlignCenter)
         fgi_layout.addWidget(self.fgi_classification_label)
         
         self.fgi_description_label = QLabel("")
-        self.fgi_description_label.setStyleSheet(
-            "font-size: 12px; margin: 5px; color: #7f8c8d;"
-        )
+        self.fgi_description_label.setObjectName("fgiDesc")
         self.fgi_description_label.setWordWrap(True)
         self.fgi_description_label.setAlignment(Qt.AlignCenter)
         fgi_layout.addWidget(self.fgi_description_label)
@@ -1441,17 +1333,17 @@ class EnhancedSentimentTab(QWidget):
         
         market_layout.addWidget(QLabel("Market Sentiment:"), 0, 0)
         self.market_sentiment_label = QLabel("Loading...")
-        self.market_sentiment_label.setStyleSheet("font-weight: bold;")
+        self.market_sentiment_label.setObjectName("sentimentLabel")
         market_layout.addWidget(self.market_sentiment_label, 0, 1)
         
         market_layout.addWidget(QLabel("Gainers:"), 1, 0)
         self.gainers_label = QLabel("0")
-        self.gainers_label.setStyleSheet("color: #27ae60; font-weight: bold;")
+        self.gainers_label.setObjectName("gainersLabel")
         market_layout.addWidget(self.gainers_label, 1, 1)
         
         market_layout.addWidget(QLabel("Losers:"), 2, 0)
         self.losers_label = QLabel("0")
-        self.losers_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+        self.losers_label.setObjectName("losersLabel")
         market_layout.addWidget(self.losers_label, 2, 1)
         
         market_layout.addWidget(QLabel("Neutral:"), 3, 0)
@@ -1460,12 +1352,12 @@ class EnhancedSentimentTab(QWidget):
         
         market_layout.addWidget(QLabel("Extreme Gainers (>5%):"), 4, 0)
         self.extreme_gainers_label = QLabel("0")
-        self.extreme_gainers_label.setStyleSheet("color: #27ae60; font-weight: bold;")
+        self.extreme_gainers_label.setObjectName("gainersLabel")
         market_layout.addWidget(self.extreme_gainers_label, 4, 1)
         
         market_layout.addWidget(QLabel("Extreme Losers (<-5%):"), 5, 0)
         self.extreme_losers_label = QLabel("0")
-        self.extreme_losers_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+        self.extreme_losers_label.setObjectName("losersLabel")
         market_layout.addWidget(self.extreme_losers_label, 5, 1)
         
         market_group.setLayout(market_layout)
@@ -1481,23 +1373,10 @@ class EnhancedSentimentTab(QWidget):
         controls_layout.addWidget(self.coin_combo)
 
         self.analyze_btn = QPushButton("🔍 Analyze Sentiment")
+        self.analyze_btn.setObjectName("actionButton")
         self.analyze_btn.setToolTip("Analyze sentiment for selected coin based on recent data")
         self.analyze_btn.setAccessibleName("Analyze Coin Sentiment Button")
         self.analyze_btn.clicked.connect(self.analyze_coin_sentiment)
-        self.analyze_btn.setStyleSheet(
-            """
-            QPushButton {
-                padding: 8px 15px;
-                background-color: #9b59b6;
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #8e44ad;
-            }
-        """
-        )
         controls_layout.addWidget(self.analyze_btn)
         coin_layout.addLayout(controls_layout)
 
@@ -1505,9 +1384,6 @@ class EnhancedSentimentTab(QWidget):
         self.coin_sentiment_text = QTextEdit()
         self.coin_sentiment_text.setReadOnly(True)
         self.coin_sentiment_text.setMaximumHeight(100)
-        self.coin_sentiment_text.setStyleSheet(
-            "background-color: #f8f9fa; border: 1px solid #dee2e6;"
-        )
         coin_layout.addWidget(self.coin_sentiment_text)
         
         coin_group.setLayout(coin_layout)
@@ -1649,44 +1525,12 @@ class EnhancedCryptoTrackerApp(QMainWindow):
 
         # Application header
         header_label = QLabel("🪙 CoinSentinel AI - Professional Crypto Tracker")
-        header_label.setStyleSheet(
-            """
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            background-color: #2c3e50;
-            padding: 15px;
-            border-radius: 5px;
-            """
-        )
+        header_label.setObjectName("appHeader")
         header_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(header_label)
 
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(
-            """
-            QTabWidget::pane {
-                border: 1px solid #cccccc;
-                background-color: white;
-            }
-            QTabBar::tab {
-                background-color: #ecf0f1;
-                color: #2c3e50;
-                padding: 10px 20px;
-                margin: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }
-            QTabBar::tab:selected {
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-            }
-            QTabBar::tab:hover {
-                background-color: #bdc3c7;
-            }
-        """
-        )
+        # Styling moved to QSS
         
         self.tabs.addTab(ImprovedMarketTab(self.api), "📊 Market Overview")
         self.tabs.addTab(
