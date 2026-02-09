@@ -668,17 +668,34 @@ class EnhancedPredictionTab(QWidget):
         self.load_coins()
 
     def load_coins(self):
-        """Load available coins into the combo box"""
-        try:
-            self.coin_combo.clear()
-            coins = self.api.get_top_coins(limit=50, vs_currency="usd")
-            for coin in coins:
-                self.coin_combo.addItem(
-                    f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
-                )
-        except Exception as e:
-            print(f"Error loading coins: {e}")
-            QMessageBox.warning(self, "Error", f"Failed to load coins: {e}")
+        """Load available coins into the combo box asynchronously"""
+        self.coin_combo.clear()
+        self.coin_combo.addItem("Loading...", None)
+        self.coin_combo.setEnabled(False)
+
+        # Re-use MarketWorker for fetching coin list
+        self.loader_thread = QThread()
+        self.loader_worker = MarketWorker(self.api, 50, "usd")
+        self.loader_worker.moveToThread(self.loader_thread)
+
+        self.loader_thread.started.connect(self.loader_worker.run)
+        self.loader_worker.finished.connect(self.handle_coins_loaded)
+        self.loader_worker.error.connect(lambda e: print(f"Coin Load Error: {e}"))
+        self.loader_worker.finished.connect(self.loader_thread.quit)
+        self.loader_thread.finished.connect(self.loader_thread.deleteLater)
+
+        self.loader_thread.start()
+
+    def handle_coins_loaded(self, coins):
+        """Handle coins loaded signal"""
+        self.coin_combo.clear()
+        self.coins_cache = coins  # Cache for run_prediction
+
+        for coin in coins:
+            self.coin_combo.addItem(
+                f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
+            )
+        self.coin_combo.setEnabled(True)
 
     def run_prediction(self):
         """Run the price prediction"""
@@ -687,16 +704,20 @@ class EnhancedPredictionTab(QWidget):
             QMessageBox.warning(self, "Warning", "Please select a coin first.")
             return
 
+        # Check cache first
+        if not hasattr(self, 'coins_cache') or not self.coins_cache:
+             QMessageBox.warning(self, "Warning", "Coin data not loaded. Please wait.")
+             return
+
         try:
             self.current_coin_id = coin_id
             
-            # Get current price and additional info
-            coins = self.api.get_top_coins(limit=50, vs_currency="usd")
+            # Get current price and additional info from cache
             current_price = 0
             market_cap = 0
             volume_24h = 0
             
-            for coin in coins:
+            for coin in self.coins_cache:
                 if coin["id"] == coin_id:
                     current_price = coin.get("current_price", 0)
                     market_cap = coin.get("market_cap", 0)
@@ -1079,16 +1100,31 @@ class EnhancedPortfolioTab(QWidget):
         self.refresh_portfolio()
 
     def _load_coins_into_dialog(self):
-        """Load coins into the AddTransactionDialog"""
-        try:
-            top = self.api.get_top_coins(limit=100, vs_currency=self.currency)
-            self.coin_list = top
-        except Exception as exc:
-            print("Failed to load coin list for dialog:", exc)
-            self.coin_list = []
+        """Load coins asynchronously"""
+        self.add_btn.setEnabled(False)
+        self.add_btn.setText("Loading Coins...")
+
+        self.loader_thread = QThread()
+        self.loader_worker = MarketWorker(self.api, 100, self.currency)
+        self.loader_worker.moveToThread(self.loader_thread)
+
+        self.loader_thread.started.connect(self.loader_worker.run)
+        self.loader_worker.finished.connect(self.handle_dialog_coins_loaded)
+        self.loader_worker.finished.connect(self.loader_thread.quit)
+        self.loader_thread.finished.connect(self.loader_thread.deleteLater)
+        self.loader_thread.start()
+
+    def handle_dialog_coins_loaded(self, coins):
+        self.coin_list = coins
+        self.add_btn.setEnabled(True)
+        self.add_btn.setText("➕ Add Transaction")
 
     def _open_add_dialog(self):
         """Open the add transaction dialog"""
+        if not hasattr(self, 'coin_list') or not self.coin_list:
+             QMessageBox.warning(self, "Not Ready", "Coin list is still loading. Please wait a moment.")
+             return
+
         dlg = AddTransactionDialog(self)
         dlg.load_coins(self.coin_list)
         if dlg.exec_() == QDialog.Accepted:
@@ -1400,14 +1436,31 @@ class EnhancedSentimentTab(QWidget):
         QTimer.singleShot(500, self.refresh_sentiment)
 
     def load_coins(self):
-        try:
-            coins = self.api.get_top_coins(limit=20, vs_currency="usd")
-            for coin in coins:
-                self.coin_combo.addItem(
-                    f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
-                )
-        except Exception as e:
-            print(f"Error loading coins: {e}")
+        """Load coins asynchronously"""
+        self.coin_combo.clear()
+        self.coin_combo.addItem("Loading...", None)
+        self.coin_combo.setEnabled(False)
+
+        # Re-use MarketWorker for fetching coin list
+        self.loader_thread = QThread()
+        self.loader_worker = MarketWorker(self.api, 20, "usd")
+        self.loader_worker.moveToThread(self.loader_thread)
+
+        self.loader_thread.started.connect(self.loader_worker.run)
+        self.loader_worker.finished.connect(self.handle_coins_loaded)
+        self.loader_worker.error.connect(lambda e: print(f"Coin Load Error: {e}"))
+        self.loader_worker.finished.connect(self.loader_thread.quit)
+        self.loader_thread.finished.connect(self.loader_thread.deleteLater)
+
+        self.loader_thread.start()
+
+    def handle_coins_loaded(self, coins):
+        self.coin_combo.clear()
+        for coin in coins:
+            self.coin_combo.addItem(
+                f"{coin['name']} ({coin['symbol'].upper()})", coin["id"]
+            )
+        self.coin_combo.setEnabled(True)
 
     def refresh_sentiment(self):
         """Fetch and display Fear & Greed Index and market analysis"""
