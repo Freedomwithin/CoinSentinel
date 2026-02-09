@@ -1,0 +1,19 @@
+# Ignore the virtual environment
+venv/
+.venv/
+env/
+
+# Ignore large data files (saves your token credits!)
+*.csv
+*.log
+*.json
+
+# Ignore build artifacts
+__pycache__/
+*.pyc
+
+# Stop the indexing lag
+**/.git/**
+**/node_modules/**
+**/dist/**
+**/build/**
