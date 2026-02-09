@@ -3,7 +3,13 @@
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import (
+    RandomForestRegressor,
+    GradientBoostingRegressor,
+    StackingRegressor,
+    HistGradientBoostingRegressor,
+)
+from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -14,6 +20,7 @@ warnings.filterwarnings("ignore")
 # Try to import technical analysis library
 try:
     import ta
+
     HAS_TA = True
 except ImportError:
     HAS_TA = False
@@ -61,25 +68,26 @@ class AdvancedPricePredictor:
                 df["bb_upper"] = bb.bollinger_hband()
                 df["bb_lower"] = bb.bollinger_lband()
                 df["bb_width"] = bb.bollinger_wband()
+
+                # Stochastic Oscillator
+                stoch = ta.momentum.StochasticOscillator(
+                    df["high"], df["low"], df["close"], window=14, smooth_window=3
+                )
+                df["stoch_k"] = stoch.stoch()
+                df["stoch_d"] = stoch.stoch_signal()
+
+                # CCI
+                df["cci"] = ta.trend.CCIIndicator(
+                    df["high"], df["low"], df["close"], window=20
+                ).cci()
+
             except Exception as e:
                 print(f"Error calculating TA indicators: {e}")
                 # Fill with default values
-                df["rsi"] = 50
-                df["macd"] = 0
-                df["macd_signal"] = 0
-                df["macd_diff"] = 0
-                df["bb_upper"] = df["close"] * 1.1
-                df["bb_lower"] = df["close"] * 0.9
-                df["bb_width"] = df["close"] * 0.2
+                self._fill_default_ta_values(df)
         else:
             # Simple alternatives without ta library
-            df["rsi"] = 50  # Neutral RSI
-            df["macd"] = 0
-            df["macd_signal"] = 0
-            df["macd_diff"] = 0
-            df["bb_upper"] = df["close"] * 1.1
-            df["bb_lower"] = df["close"] * 0.9
-            df["bb_width"] = df["close"] * 0.2
+            self._fill_default_ta_values(df)
 
         df["volatility"] = df["close"].rolling(window=20, min_periods=1).std()
 
@@ -87,28 +95,59 @@ class AdvancedPricePredictor:
         if "volume" in df.columns:
             df["volume_sma"] = df["volume"].rolling(window=20, min_periods=1).mean()
             df["volume_ratio"] = df["volume"] / df["volume_sma"]
-            df["price_volume_corr"] = df["close"].rolling(window=20, min_periods=1).corr(df["volume"])
+            df["price_volume_corr"] = (
+                df["close"].rolling(window=20, min_periods=1).corr(df["volume"])
+            )
         else:
             df["volume_sma"] = 0
             df["volume_ratio"] = 1
             df["price_volume_corr"] = 0
 
         # Price position
-        df["high_20"] = df["high"].rolling(window=20, min_periods=1).max() if "high" in df.columns else df["close"]
-        df["low_20"] = df["low"].rolling(window=20, min_periods=1).min() if "low" in df.columns else df["close"]
-        df["price_position"] = (df["close"] - df["low_20"]) / (df["high_20"] - df["low_20"] + 0.0001)
+        df["high_20"] = (
+            df["high"].rolling(window=20, min_periods=1).max()
+            if "high" in df.columns
+            else df["close"]
+        )
+        df["low_20"] = (
+            df["low"].rolling(window=20, min_periods=1).min()
+            if "low" in df.columns
+            else df["close"]
+        )
+        df["price_position"] = (df["close"] - df["low_20"]) / (
+            df["high_20"] - df["low_20"] + 0.0001
+        )
 
         # Rate of change
-        df["roc_7"] = ((df["close"] - df["close"].shift(7)) / (df["close"].shift(7) + 0.0001)) * 100
-        df["roc_14"] = ((df["close"] - df["close"].shift(14)) / (df["close"].shift(14) + 0.0001)) * 100
+        df["roc_7"] = (
+            (df["close"] - df["close"].shift(7)) / (df["close"].shift(7) + 0.0001)
+        ) * 100
+        df["roc_14"] = (
+            (df["close"] - df["close"].shift(14)) / (df["close"].shift(14) + 0.0001)
+        ) * 100
 
         # Target: future price change (next period)
-        df["target"] = ((df["close"].shift(-1) - df["close"]) / (df["close"] + 0.0001)) * 100
+        df["target"] = (
+            (df["close"].shift(-1) - df["close"]) / (df["close"] + 0.0001)
+        ) * 100
 
         # Drop NaN values
         df = df.dropna()
 
         return df
+
+    def _fill_default_ta_values(self, df):
+        """Fill default values for TA indicators if calculation fails or lib missing"""
+        df["rsi"] = 50  # Neutral RSI
+        df["macd"] = 0
+        df["macd_signal"] = 0
+        df["macd_diff"] = 0
+        df["bb_upper"] = df["close"] * 1.1
+        df["bb_lower"] = df["close"] * 0.9
+        df["bb_width"] = df["close"] * 0.2
+        df["stoch_k"] = 50
+        df["stoch_d"] = 50
+        df["cci"] = 0
 
     def prepare_features(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """Prepare features and target for training"""
@@ -136,6 +175,9 @@ class AdvancedPricePredictor:
             "price_position",
             "roc_7",
             "roc_14",
+            "stoch_k",
+            "stoch_d",
+            "cci",
         ]
 
         # Ensure all feature columns exist
@@ -147,7 +189,7 @@ class AdvancedPricePredictor:
         return X, y
 
     def train_ensemble_model(self, coin_id: str, days: int = 90):
-        """Train ensemble model for a specific coin"""
+        """Train ensemble model for a specific coin using Stacking"""
         try:
             # Fetch historical data
             df = self.api.get_coin_history(coin_id, days=days)
@@ -170,57 +212,48 @@ class AdvancedPricePredictor:
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
 
-            # Train ensemble of models
-            models = {
-                "rf": RandomForestRegressor(
-                    n_estimators=100, random_state=42, n_jobs=-1
+            # Base estimators
+            estimators = [
+                (
+                    "rf",
+                    RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1),
                 ),
-                "gb": GradientBoostingRegressor(n_estimators=100, random_state=42),
-            }
+                (
+                    "gb",
+                    GradientBoostingRegressor(n_estimators=100, random_state=42),
+                ),
+                (
+                    "hgb",
+                    HistGradientBoostingRegressor(random_state=42),
+                ),
+            ]
 
-            predictions = []
-            model_predictions = {}
+            # Stacking Regressor
+            stacking_regressor = StackingRegressor(
+                estimators=estimators, final_estimator=Ridge()
+            )
 
-            for name, model in models.items():
-                model.fit(X_train_scaled, y_train)
+            stacking_regressor.fit(X_train_scaled, y_train)
 
-                # Predict on test set
-                y_pred = model.predict(X_test_scaled)
+            # Predict on test set
+            y_pred = stacking_regressor.predict(X_test_scaled)
 
-                # Calculate metrics
-                mae = mean_absolute_error(y_test, y_pred)
-                rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-
-                model_predictions[name] = {
-                    "model": model,
-                    "mae": mae,
-                    "rmse": rmse,
-                    "predictions": y_pred,
-                }
-                predictions.append(y_pred)
-
-            # Ensemble prediction (average)
-            ensemble_pred = np.mean(predictions, axis=0)
-            ensemble_mae = mean_absolute_error(y_test, ensemble_pred)
-            ensemble_rmse = np.sqrt(mean_squared_error(y_test, ensemble_pred))
+            # Calculate metrics
+            mae = mean_absolute_error(y_test, y_pred)
+            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
             # Save models and scaler
             model_path = os.path.join(self.model_dir, f"{coin_id}_model.joblib")
             scaler_path = os.path.join(self.model_dir, f"{coin_id}_scaler.joblib")
 
-            simple_models = {
-                "rf": model_predictions["rf"]["model"],
-                "gb": model_predictions["gb"]["model"],
-            }
-
-            joblib.dump(simple_models, model_path)
+            joblib.dump(stacking_regressor, model_path)
             joblib.dump(scaler, scaler_path)
 
             # Update cache
             self.models[coin_id] = {
-                "ensemble_mae": ensemble_mae,
-                "ensemble_rmse": ensemble_rmse,
-                "models": simple_models,
+                "ensemble_mae": mae,
+                "ensemble_rmse": rmse,
+                "model": stacking_regressor,
                 "last_trained": datetime.now(),
                 "days_trained": days,
                 "scaler": scaler,
@@ -228,7 +261,7 @@ class AdvancedPricePredictor:
 
             return (
                 True,
-                f"Model trained. MAE: {ensemble_mae:.4f}, RMSE: {ensemble_rmse:.4f}",
+                f"Model trained. MAE: {mae:.4f}, RMSE: {rmse:.4f}",
             )
 
         except Exception as e:
@@ -292,9 +325,10 @@ class AdvancedPricePredictor:
                 print(f"→ Loading model from disk...")
                 try:
                     import joblib
-                    models_dict = joblib.load(model_path)
+
+                    model = joblib.load(model_path)
                     scaler = joblib.load(scaler_path)
-                    self.models[coin_id] = {"models": models_dict, "scaler": scaler}
+                    self.models[coin_id] = {"model": model, "scaler": scaler}
                     print(f"✓ Model loaded successfully")
                 except Exception as e:
                     print(f"❌ Model loading failed: {e}")
@@ -307,22 +341,19 @@ class AdvancedPricePredictor:
             scaler = self.models[coin_id]["scaler"]
             latest_scaled = scaler.transform(latest_features)
 
-            # Ensemble prediction
-            predictions = []
-            model_weights = {"rf": 0.6, "gb": 0.4}
+            # Prediction
+            model_obj = self.models[coin_id].get("model")
 
-            for model_name, weight in model_weights.items():
-                if model_name in self.models[coin_id]["models"]:
-                    model = self.models[coin_id]["models"][model_name]
-                    pred = model.predict(latest_scaled)[0]
-                    predictions.append(pred * weight)
-                    print(f"  {model_name.upper()}: {pred:.2f}% (weight: {weight})")
-
-            if not predictions:
-                print("❌ No models available for prediction")
-                return self._fallback_prediction(current_price, time_frame)
-
-            predicted_change = sum(predictions)
+            # Check if it's the old dict format or new StackingRegressor
+            if isinstance(model_obj, dict):
+                 print("⚠️ Legacy model detected. Using simple average.")
+                 # Use simple average as before
+                 preds = []
+                 for m in model_obj.values():
+                     preds.append(m.predict(latest_scaled)[0])
+                 predicted_change = np.mean(preds)
+            else:
+                 predicted_change = model_obj.predict(latest_scaled)[0]
 
             # Adjust for time frame
             time_frame_adjustment = 1.0
@@ -333,8 +364,6 @@ class AdvancedPricePredictor:
 
             predicted_change *= time_frame_adjustment
 
-            print(f"  Raw prediction: {sum(predictions):.2f}%")
-            print(f"  Time adjustment: {time_frame_adjustment}x")
             print(f"  Final prediction: {predicted_change:.2f}%")
 
             # Calculate results
@@ -346,9 +375,9 @@ class AdvancedPricePredictor:
 
             direction = "bullish" if predicted_change > 0 else "bearish"
             strength = (
-                "strong" if abs(predicted_change) > 5
-                else "moderate" if abs(predicted_change) > 2
-                else "weak"
+                "strong"
+                if abs(predicted_change) > 5
+                else "moderate" if abs(predicted_change) > 2 else "weak"
             )
 
             insights = self._generate_insights(df, predicted_change, time_frame)
@@ -376,6 +405,7 @@ class AdvancedPricePredictor:
         except Exception as e:
             print(f"❌ PREDICTION ERROR: {e}")
             import traceback
+
             traceback.print_exc()
             print(f"{'='*60}\\n")
             return self._fallback_prediction(current_price, time_frame)
@@ -384,7 +414,7 @@ class AdvancedPricePredictor:
         """Fallback prediction when ML model fails"""
         # Simple momentum-based fallback
         change = 1.0 * time_frame * 0.5  # Modest prediction
-        
+
         return {
             "current_price": current_price,
             "predicted_price": current_price * (1 + change / 100),
@@ -397,7 +427,7 @@ class AdvancedPricePredictor:
             "insights": [
                 "Using fallback prediction model",
                 f"Prediction for {time_frame} {'day' if time_frame == 1 else 'days'}",
-                "Limited data available for ML prediction"
+                "Limited data available for ML prediction",
             ],
             "is_fallback": True,
         }
@@ -479,11 +509,18 @@ class AdvancedPricePredictor:
     def get_model_performance(self, coin_id: str) -> Optional[Dict]:
         """Get model performance metrics"""
         if coin_id in self.models:
+            model_info = self.models[coin_id]
+            # Handle legacy
+            if "models" in model_info:
+                models_list = list(model_info.get("models", {}).keys())
+            else:
+                models_list = ["StackingRegressor"]
+
             return {
-                "last_trained": self.models[coin_id].get("last_trained"),
-                "ensemble_mae": self.models[coin_id].get("ensemble_mae"),
-                "ensemble_rmse": self.models[coin_id].get("ensemble_rmse"),
-                "models_trained": list(self.models[coin_id].get("models", {}).keys()),
-                "days_trained": self.models[coin_id].get("days_trained", 90),
+                "last_trained": model_info.get("last_trained"),
+                "ensemble_mae": model_info.get("ensemble_mae"),
+                "ensemble_rmse": model_info.get("ensemble_rmse"),
+                "models_trained": models_list,
+                "days_trained": model_info.get("days_trained", 90),
             }
         return None

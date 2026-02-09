@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import (
     QFrame,       # ADD THIS
     QListWidget,  # ADD THIS
     QListWidgetItem,  # ADD THIS
+    QMenu,        # ADD THIS
 )
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QFont, QPalette, QPixmap  # ADD QPixmap
@@ -435,6 +436,13 @@ class EnhancedPredictionTab(QWidget):
         self.canvas_7d = FigureCanvas(self.figure_7d)
         self.chart_7d.layout().addWidget(self.canvas_7d)
 
+    def set_current_coin(self, coin_id):
+        """Set the current coin programmatically and trigger prediction"""
+        index = self.coin_selector.findData(coin_id)
+        if index >= 0:
+            self.coin_selector.setCurrentIndex(index)
+            self.run_prediction()
+
     def search_coin(self):
         """Search for any coin"""
         search_text = self.coin_selector.currentText().strip()
@@ -497,35 +505,6 @@ class EnhancedPredictionTab(QWidget):
             self.train_button.setEnabled(True)
             self.progress_bar.setVisible(False)
 
-class ImprovedMarketTab(QWidget):
-    """Simple market tab"""
-    
-    def __init__(self, api_handler):
-        super().__init__()
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Market Tab - Working!"))
-        self.setLayout(layout)
-        def init_ui(self):
-        # Create central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        
-        # Create tab widget
-        self.tabs = QTabWidget()
-        
-        # Add tabs - MAKE SURE THESE CLASSES EXIST!
-        self.tabs.addTab(ImprovedMarketTab(self.api), "Market Overview")
-        self.tabs.addTab(EnhancedPredictionTab(self.api, self.predictor), "AI Predictions")
-        self.tabs.addTab(EnhancedPortfolioTab(self.api, self.portfolio), "Portfolio")
-        self.tabs.addTab(EnhancedSentimentTab(self.api), "Market Sentiment")
-        
-        main_layout.addWidget(self.tabs)
-        
-        # Status bar
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Application ready")
  
 class EnhancedPredictionTab(QWidget):
     def __init__(self, api_handler, predictor):
@@ -2135,6 +2114,29 @@ class EnhancedCryptoTrackerApp(QMainWindow):
         # Initialize data
         self.load_initial_data()
 
+    def show_market_context_menu(self, position):
+        menu = QMenu()
+        predict_action = menu.addAction("Predict Price")
+        action = menu.exec_(self.market_table.viewport().mapToGlobal(position))
+
+        if action == predict_action:
+            row = self.market_table.rowAt(position.y())
+            if row >= 0:
+                name_item = self.market_table.item(row, 1)
+                if name_item:
+                    coin_id = name_item.data(Qt.UserRole)
+                    if coin_id:
+                        self.open_prediction_tab(coin_id)
+
+    def open_prediction_tab(self, coin_id):
+        """Switch to prediction tab and select coin"""
+        # Prediction tab is at index 1
+        self.tabs.setCurrentIndex(1)
+        # Get the prediction tab widget
+        prediction_tab = self.tabs.currentWidget()
+        if hasattr(prediction_tab, 'set_current_coin'):
+            prediction_tab.set_current_coin(coin_id)
+
     def create_market_tab(self):
         """Create market overview tab"""
         widget = QWidget()
@@ -2200,6 +2202,11 @@ class EnhancedCryptoTrackerApp(QMainWindow):
         self.market_table.setSortingEnabled(True)
         self.market_table.setAlternatingRowColors(True)
         self.market_table.verticalHeader().setVisible(False)
+
+        # Add context menu
+        self.market_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.market_table.customContextMenuRequested.connect(self.show_market_context_menu)
+
         layout.addWidget(self.market_table)
         # Statistics panel
         stats_panel = QGroupBox("Market Statistics")
@@ -2372,7 +2379,12 @@ class EnhancedCryptoTrackerApp(QMainWindow):
                 coin_id = coin.get("id")
                 # Fill table with basic data
                 self.market_table.setItem(row, 0, QTableWidgetItem(str(rank)))
-                self.market_table.setItem(row, 1, QTableWidgetItem(name))
+
+                # Store coin_id in name item
+                name_item = QTableWidgetItem(name)
+                name_item.setData(Qt.UserRole, coin_id)
+                self.market_table.setItem(row, 1, name_item)
+
                 self.market_table.setItem(row, 2, QTableWidgetItem(symbol))
                 self.market_table.setItem(row, 3, QTableWidgetItem(f"{price:,.2f}"))
                 # Add percentage changes with color coding
@@ -2391,12 +2403,14 @@ class EnhancedCryptoTrackerApp(QMainWindow):
                 )
                 self.market_table.setItem(row, 8, QTableWidgetItem(f"{volume:,.0f}"))
                 # Get prediction in background thread
-                QTimer.singleShot(
-                    row * 100,
-                    lambda r=row, cid=coin_id, p=price: self.update_prediction_cell(
-                        r, cid, p
-                    ),
-                )
+                # Disabled auto-prediction to improve performance
+                # User can request prediction via context menu
+                # QTimer.singleShot(
+                #     row * 100,
+                #     lambda r=row, cid=coin_id, p=price: self.update_prediction_cell(
+                #         r, cid, p
+                #     ),
+                # )
             # Update statistics
             self.update_market_statistics(total_market_cap, total_volume, coins)
             self.status_bar.showMessage(f"Market data updated: {len(coins)} coins")
@@ -2818,7 +2832,7 @@ def main():
 
     # Create the main window - NO parameters needed!
     # CryptoTrackerApp creates everything inside itself
-    window = CryptoTrackerApp()  # <-- NO PARAMETERS!
+    window = EnhancedCryptoTrackerApp()  # <-- NO PARAMETERS!
     window.show()
     
     # Start event loop
