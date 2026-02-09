@@ -346,14 +346,14 @@ class AdvancedPricePredictor:
 
             # Check if it's the old dict format or new StackingRegressor
             if isinstance(model_obj, dict):
-                 print("⚠️ Legacy model detected. Using simple average.")
-                 # Use simple average as before
-                 preds = []
-                 for m in model_obj.values():
-                     preds.append(m.predict(latest_scaled)[0])
-                 predicted_change = np.mean(preds)
+                print("⚠️ Legacy model detected. Using simple average.")
+                # Use simple average as before
+                preds = []
+                for m in model_obj.values():
+                    preds.append(m.predict(latest_scaled)[0])
+                predicted_change = np.mean(preds)
             else:
-                 predicted_change = model_obj.predict(latest_scaled)[0]
+                predicted_change = model_obj.predict(latest_scaled)[0]
 
             # Adjust for time frame
             time_frame_adjustment = 1.0
