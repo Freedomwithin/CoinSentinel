@@ -1,105 +1,296 @@
-/* CoinSentinel AI - High-Tech Reconstruction */
+/* CoinSentinel AI - Modern Dark Theme (Crypto.com Inspired) */
 
-/* 1. Global Reset - Kills the '1998 White' */
+/* =================GLOBAL RESET================= */
+* {
+    outline: none;
+}
+
 QWidget {
-    background-color: #0d1117;
-    color: #f0f6fc;
-    font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+    background-color: #060B14; /* Deep Navy / Black */
+    color: #E0E6ED;            /* Off-White Text */
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 14px;
 }
 
-QMainWindow {
-    background-color: #0d1117;
+QMainWindow, QDialog {
+    background-color: #060B14;
 }
 
-/* 2. Elevated Containers (Coinbase Card Look) */
-QGroupBox, QFrame {
-    background-color: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 12px;
-}
-
-/* Specific fix for the white Prediction background */
-#prediction_tab, #market_tab, #portfolio_tab {
-    background-color: #0d1117;
-}
-
-/* 3. The Tab Bar - Unified with Header */
-QTabWidget::pane {
-    border: 1px solid #30363d;
-    top: -1px;
-    background-color: #0d1117;
-}
-
-QTabBar::tab {
-    background: #010409;
-    color: #8b949e;
-    padding: 12px 30px;
-    border: 1px solid #30363d;
-    border-bottom: none;
-    margin-right: 4px;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-}
-
-QTabBar::tab:selected {
-    background: #161b22;
-    color: #58a6ff;
-    border-bottom: 2px solid #58a6ff;
-}
-
-/* 4. Professional Tables (Bloomberg/Coinbase Style) */
-QTableWidget {
-    background-color: #0d1117;
-    gridline-color: #30363d;
-    border: none;
-    selection-background-color: #1f6feb;
-}
-
-QHeaderView::section {
-    background-color: #161b22;
-    color: #8b949e;
-    padding: 15px;
-    border: none;
-    border-bottom: 2px solid #30363d;
+/* =================TYPOGRAPHY================= */
+QLabel#sectionTitle {
+    font-size: 22px;
     font-weight: bold;
-    font-size: 10pt;
+    color: #FFFFFF;
+    padding: 10px 0;
 }
 
-/* 5. Inputs - Sleek Dark Mode */
-QLineEdit, QComboBox, QSpinBox {
-    background-color: #010409;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 10px;
-    color: #f0f6fc;
+QLabel#appHeader {
+    font-size: 28px;
+    font-weight: 800;
+    color: #FFFFFF;
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0F1724, stop:1 #1A2639);
+    padding: 20px;
+    border-bottom: 1px solid #1E293B;
+    border-radius: 0 0 16px 16px;
 }
 
-QLineEdit:focus {
-    border: 1px solid #58a6ff;
+QLabel#infoLabelLarge {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
 }
 
-/* 6. Buttons - Modern Interactive States */
-QPushButton {
-    background-color: #21262d;
-    color: #c9d1d9;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 10px 20px;
+QLabel#infoLabel {
+    font-size: 13px;
+    color: #94A3B8; /* Muted text */
+}
+
+QLabel#predictionResultLabel {
+    font-size: 28px;
+    font-weight: bold;
+    color: #1199FA;
+}
+
+QLabel#predictionMetaLabel {
+    font-size: 15px;
+    font-weight: 600;
+    color: #E0E6ED;
+}
+
+QLabel#totalValueLabel {
+    font-size: 32px;
+    font-weight: 800;
+    color: #FFFFFF;
+}
+
+QLabel#totalPnlLabel {
+    font-size: 18px;
     font-weight: 600;
 }
 
-QPushButton:hover {
-    background-color: #30363d;
-    border-color: #8b949e;
+/* =================CONTAINERS (CARDS)================= */
+QGroupBox, QFrame {
+    background-color: #0F1724; /* Card Background */
+    border: 1px solid #1E293B;
+    border-radius: 16px;
+    margin-top: 10px; /* Space for title */
 }
 
-/* Primary Action Blue (Predict Price) */
-QPushButton#predict_btn {
-    background-color: #1f6feb;
-    color: white;
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 5px 10px;
+    color: #94A3B8;
+    font-weight: bold;
+    font-size: 13px;
+    background-color: transparent;
+}
+
+/* =================TABS================= */
+QTabWidget::pane {
+    border: none;
+    background-color: #060B14;
+    padding-top: 15px;
+}
+
+QTabWidget::tab-bar {
+    alignment: left;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: #94A3B8;
+    padding: 12px 24px;
+    margin-right: 8px;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+QTabBar::tab:selected {
+    color: #1199FA;
+    border-bottom: 3px solid #1199FA;
+}
+
+QTabBar::tab:hover {
+    color: #E0E6ED;
+}
+
+/* =================TABLES================= */
+QTableWidget {
+    background-color: #060B14;
+    border: none;
+    gridline-color: transparent;
+    outline: none;
+    selection-background-color: #1A2639;
+    selection-color: #FFFFFF;
+    alternate-background-color: #0A101C; /* Very subtle row stripe */
+}
+
+QHeaderView::section {
+    background-color: #060B14;
+    color: #94A3B8;
+    padding: 12px;
+    border: none;
+    border-bottom: 1px solid #1E293B;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+QTableWidget::item {
+    padding: 12px;
+    border-bottom: 1px solid #0F1724;
+}
+
+QTableWidget::item:selected {
+    background-color: #1A2639; /* Selection Highlight */
+    border-radius: 8px;
+}
+
+/* =================INPUTS================= */
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background-color: #0F1724;
+    border: 1px solid #1E293B;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #FFFFFF;
+    selection-background-color: #1199FA;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #1199FA;
+    background-color: #162032;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    width: 12px;
+    height: 12px;
+    margin-right: 10px;
+}
+
+/* =================BUTTONS================= */
+QPushButton {
+    background-color: #1A2639;
+    color: #E0E6ED;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #243046;
+    border-color: #475569;
+}
+
+QPushButton:pressed {
+    background-color: #0F1724;
+}
+
+/* Primary Action Buttons (Predict, Add Transaction) */
+QPushButton#actionButton, QPushButton#predictButton {
+    background-color: #1199FA; /* Crypto.com Blue */
+    color: #FFFFFF;
     border: none;
 }
 
-QPushButton#predict_btn:hover {
-    background-color: #388bfd;
+QPushButton#actionButton:hover, QPushButton#predictButton:hover {
+    background-color: #3B82F6; /* Lighter Blue */
+}
+
+QPushButton#actionButton:pressed, QPushButton#predictButton:pressed {
+    background-color: #0F70C7; /* Darker Blue */
+}
+
+/* =================SCROLLBARS================= */
+QScrollBar:vertical {
+    border: none;
+    background: #060B14;
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #1E293B;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #334155;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #060B14;
+    height: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #1E293B;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #334155;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* =================OTHER================= */
+QProgressBar {
+    border: none;
+    background-color: #1E293B;
+    border-radius: 6px;
+    text-align: center;
+    color: transparent;
+}
+
+QProgressBar::chunk {
+    background-color: #1199FA;
+    border-radius: 6px;
+}
+
+QTextEdit {
+    background-color: #0F1724;
+    border: 1px solid #1E293B;
+    border-radius: 12px;
+    padding: 10px;
+    color: #E0E6ED;
+}
+
+QSplitter::handle {
+    background-color: #1E293B;
+    width: 2px;
+}
+
+/* Status Bar */
+QStatusBar {
+    background-color: #0F1724;
+    color: #94A3B8;
+    border-top: 1px solid #1E293B;
+}
+
+/* Tooltips */
+QToolTip {
+    background-color: #1E293B;
+    color: #FFFFFF;
+    border: 1px solid #334155;
+    padding: 5px;
+    border-radius: 4px;
 }
